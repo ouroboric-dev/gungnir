@@ -38,6 +38,12 @@ type Cap struct {
 	USD    float64 `yaml:"usd"`
 }
 
+// agents are the adapters factory.schema.json accepts.
+var agents = []string{"claude-code", "opencode", "scripted"}
+
+// KnownAgent reports whether agent is an adapter this schema accepts.
+func KnownAgent(agent string) bool { return slices.Contains(agents, agent) }
+
 // PaidAPI reports whether an adapter bills a paid API. Only adapters known to run on a
 // subscription or at no cost return false, so a new adapter needs a spend limit until it is listed.
 func PaidAPI(agent string) bool { return agent != "claude-code" && agent != "scripted" }
@@ -109,7 +115,8 @@ func checkCaps(file string, doc any) error {
 	paid := ""
 	for _, name := range sortedKeys(roles) {
 		role, _ := roles[name].(map[string]any)
-		if agent, ok := role["agent"].(string); ok && PaidAPI(agent) {
+		// An unknown agent is the schema's to refuse, by name; it never asks for a spend limit.
+		if agent, ok := role["agent"].(string); ok && KnownAgent(agent) && PaidAPI(agent) {
 			paid = fmt.Sprintf("role %s runs on %s, which bills a paid API", name, agent)
 			break
 		}
