@@ -97,6 +97,9 @@ func ParseFactory(file string, data []byte) (*Factory, error) {
 	if f.Privacy == "" {
 		f.Privacy = "standard"
 	}
+	if err := f.CheckGates(f.Mode); err != nil {
+		return nil, fmt.Errorf("%s: %w", file, err)
+	}
 	return &f, nil
 }
 
@@ -130,6 +133,23 @@ func checkCaps(file string, doc any) error {
 	}
 	if len(missing) > 0 {
 		return &CapsError{File: file, Missing: missing, Paid: paid != ""}
+	}
+	return nil
+}
+
+// CheckGates refuses overrides that mode doesn't allow (spec §7.2). No override may touch a hard
+// approval point. An override may only tighten, to stop; the one exception is design: auto, and
+// only in unattended mode.
+func (f *Factory) CheckGates(mode gungnir.Mode) error {
+	for _, g := range sortedKeys(f.Gates) {
+		switch v := f.Gates[g]; {
+		case g.Hard():
+			return fmt.Errorf("gates.%s: %s is a hard approval point, and no config can override it", g, g)
+		case v == "auto" && g != gungnir.GateDesign:
+			return fmt.Errorf("gates.%s: an override can only set stop; design: auto in unattended mode is the one exception", g)
+		case v == "auto" && mode != gungnir.ModeUnattended:
+			return fmt.Errorf("gates.design: auto is allowed only in unattended mode, not %s", mode)
+		}
 	}
 	return nil
 }

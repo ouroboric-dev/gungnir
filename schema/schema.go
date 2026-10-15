@@ -48,13 +48,17 @@ func validate(file, schemaName string, doc any) error {
 	return nil
 }
 
-// decodeYAML reads the first YAML document and returns it as JSON values, ready for validate.
+// decodeYAML reads exactly one YAML document and returns it as JSON values, ready for validate.
 // Duplicate keys are an error in the YAML decoder itself.
 func decodeYAML(file string, data []byte) (any, error) {
 	dec := yaml.NewDecoder(bytes.NewReader(data))
 	var doc any
 	if err := dec.Decode(&doc); err != nil && !errors.Is(err, io.EOF) {
 		return nil, fmt.Errorf("%s: %w", file, err)
+	}
+	var extra any
+	if err := dec.Decode(&extra); !errors.Is(err, io.EOF) {
+		return nil, fmt.Errorf("%s: holds more than one YAML document", file)
 	}
 	raw, err := json.Marshal(doc)
 	if err != nil {
