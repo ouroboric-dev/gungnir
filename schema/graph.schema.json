@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/ouroboric-dev/gungnir/schema/graph.schema.json",
+  "title": "graph.yaml",
+  "description": "A realm's graph: nodes run in order; a gate node is an approval point (spec §4.2, §7). Loop nodes come in a later schema version.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["name", "version", "nodes"],
+  "properties": {
+    "name": { "$ref": "#/$defs/id" },
+    "version": { "$ref": "#/$defs/version" },
+    "nodes": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/node" } }
+  },
+  "$defs": {
+    "id": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
+    "version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" },
+    "duration": { "type": "string", "pattern": "^[0-9]+(ms|s|m|h)$" },
+    "node": {
+      "type": "object",
+      "required": ["id", "kind"],
+      "properties": { "kind": { "enum": ["exec", "agent", "gate"] } },
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "required": ["run"],
+          "properties": {
+            "id": { "$ref": "#/$defs/id" },
+            "kind": { "const": "exec" },
+            "run": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
+            "timeout": { "$ref": "#/$defs/duration" }
+          }
+        },
+        {
+          "additionalProperties": false,
+          "required": ["role", "prompt"],
+          "properties": {
+            "id": { "$ref": "#/$defs/id" },
+            "kind": { "const": "agent" },
+            "role": { "$ref": "#/$defs/id" },
+            "prompt": { "type": "string", "minLength": 1 },
+            "read_only": { "type": "boolean" },
+            "max_turns": { "type": "integer", "minimum": 1 },
+            "timeout": { "$ref": "#/$defs/duration" }
+          }
+        },
+        {
+          "additionalProperties": false,
+          "required": ["gate"],
+          "properties": {
+            "id": { "$ref": "#/$defs/id" },
+            "kind": { "const": "gate" },
+            "gate": {
+              "enum": ["design", "spec", "plan", "feature", "merge", "pointer", "pointer-contract",
+                       "deploy-prod", "store-submit", "real-secrets-or-user-data", "budget-cap",
+                       "external-input", "policy-violation", "shrink-guard", "guardrail-change"]
+            },
+            "reruns": { "$ref": "#/$defs/id" }
+          }
+        }
+      ]
+    }
+  }
+}
