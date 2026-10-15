@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/ouroboric-dev/gungnir/schema/pack.schema.json",
   "title": "pack.yaml",
-  "description": "A realm pack: its name, version, graph, default roles and check commands (spec §9.4).",
+  "description": "A realm pack: its name, version, graph, default roles, check commands, and the leaves its graph works in, with each one's template and first-commit files (spec §9.4; change remote-creates-repos).",
   "type": "object",
   "additionalProperties": false,
   "required": ["name", "version", "graph"],
@@ -27,6 +27,20 @@
       "type": "object",
       "propertyNames": { "pattern": "^[a-z][a-z0-9-]*$" },
       "additionalProperties": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } }
+    },
+    "leaves": {
+      "type": "object",
+      "propertyNames": { "pattern": "^[a-z0-9][a-z0-9._-]*(/[a-z0-9][a-z0-9._-]*)*$" },
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["description", "template", "first_commit"],
+        "properties": {
+          "description": { "type": "string", "minLength": 1 },
+          "template": { "type": "string", "minLength": 1 },
+          "first_commit": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } }
+        }
+      }
     }
   }
 }

@@ -2,6 +2,7 @@ package schema
 
 import (
 	"encoding/json"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -80,4 +81,10 @@ func mustJSON(t *testing.T, v any) string {
 		t.Fatal(err)
 	}
 	return string(b)
+}
+
+func TestRepoCreatedIsAnEvent(t *testing.T) {
+	if !slices.Contains(gungnir.Events(), gungnir.EventRepoCreated) || gungnir.EventRepoCreated != "repo_created" {
+		t.Error("repo_created isn't a ledger event")
+	}
 }

@@ -16,7 +16,8 @@
       "enum": ["run_started", "run_resumed", "run_finished", "run_failed", "node_started",
                "node_finished", "node_failed", "check_result", "gate_pending", "gate_approved",
                "gate_rejected", "gate_auto_passed", "loop_attempt", "escalation", "routing_lookup",
-               "budget_warning", "policy_violation", "pointer_moved", "mode_changed", "config_changed"]
+               "budget_warning", "policy_violation", "pointer_moved", "mode_changed", "config_changed",
+               "repo_created"]
     },
     "ygg.attempt": { "type": "integer", "minimum": 1 },
     "gen_ai.agent.name": { "type": "string" },
