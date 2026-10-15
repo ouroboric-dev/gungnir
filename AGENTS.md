@@ -9,5 +9,6 @@ This file only adds rules for this repo.
 ## This repo
 
 - Build and test: `go test ./...`. Lint: `go vet ./...`.
-- Interfaces live in `gungnir`, never here (spec §1).
+- Every interface and schema lives here. A change here comes with a PR in each affected component
+  (spec §1).
 - Architecture: `docs/architecture.md`.
