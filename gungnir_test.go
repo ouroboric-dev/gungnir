@@ -38,7 +38,7 @@ func TestUsageAdd(t *testing.T) {
 
 func TestHardGatesAreTheSpecList(t *testing.T) {
 	hard := []Gate{"deploy-prod", "store-submit", "real-secrets-or-user-data", "budget-cap",
-		"external-input", "policy-violation", "shrink-guard", "guardrail-change"}
+		"external-input", "policy-violation", "shrink-guard", "guardrail-change", "repo-admin"}
 	for _, g := range Gates() {
 		if g.Hard() != slices.Contains(hard, g) {
 			t.Errorf("%s.Hard() = %v, want %v", g, g.Hard(), !g.Hard())
@@ -47,8 +47,8 @@ func TestHardGatesAreTheSpecList(t *testing.T) {
 			t.Errorf("%s.Known() = false", g)
 		}
 	}
-	if len(Gates()) != 15 {
-		t.Errorf("len(Gates()) = %d, want 15", len(Gates()))
+	if len(Gates()) != 16 {
+		t.Errorf("len(Gates()) = %d, want 16", len(Gates()))
 	}
 	if Gate("nope").Known() || Gate("nope").Hard() {
 		t.Error(`Gate("nope") is known or hard`)
