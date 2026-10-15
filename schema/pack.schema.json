@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/ouroboric-dev/gungnir/schema/pack.schema.json",
+  "title": "pack.yaml",
+  "description": "A realm pack: its name, version, graph, default roles and check commands (spec §9.4).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["name", "version", "graph"],
+  "properties": {
+    "name": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
+    "version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" },
+    "graph": { "type": "string", "minLength": 1 },
+    "roles": {
+      "type": "object",
+      "propertyNames": { "pattern": "^[a-z][a-z0-9-]*$" },
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["agent", "model"],
+        "properties": {
+          "agent": { "enum": ["claude-code", "opencode", "scripted"] },
+          "model": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "checks": {
+      "type": "object",
+      "propertyNames": { "pattern": "^[a-z][a-z0-9-]*$" },
+      "additionalProperties": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } }
+    }
+  }
+}

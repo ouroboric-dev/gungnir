@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/ouroboric-dev/gungnir/schema/factory.schema.json",
+  "title": "factory.yaml",
+  "description": "The operator's factory settings: mode, approval-point overrides, roles, budget caps and privacy (spec §5, §7; change require-budget-caps). Caps are required and have no defaults.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["roles", "budget"],
+  "properties": {
+    "mode": { "enum": ["step-by-step", "key-points", "unattended"] },
+    "gates": {
+      "type": "object",
+      "propertyNames": {
+        "enum": ["design", "spec", "plan", "feature", "merge", "pointer", "pointer-contract",
+                 "deploy-prod", "store-submit", "real-secrets-or-user-data", "budget-cap",
+                 "external-input", "policy-violation", "shrink-guard", "guardrail-change"]
+      },
+      "additionalProperties": { "enum": ["stop", "auto"] }
+    },
+    "roles": {
+      "type": "object",
+      "minProperties": 1,
+      "propertyNames": { "pattern": "^[a-z][a-z0-9-]*$" },
+      "additionalProperties": { "$ref": "#/$defs/role" }
+    },
+    "budget": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["per_run", "per_day"],
+      "properties": {
+        "per_run": { "$ref": "#/$defs/cap" },
+        "per_day": { "$ref": "#/$defs/cap" }
+      }
+    },
+    "privacy": { "enum": ["standard", "strict"] }
+  },
+  "$defs": {
+    "role": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["agent", "model"],
+      "properties": {
+        "agent": { "enum": ["claude-code", "opencode", "scripted"] },
+        "model": { "type": "string", "minLength": 1 },
+        "script": { "type": "string", "minLength": 1 }
+      },
+      "if": { "properties": { "agent": { "const": "scripted" } } },
+      "then": { "required": ["script"] },
+      "else": { "not": { "required": ["script"] } }
+    },
+    "cap": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tokens", "turns"],
+      "properties": {
+        "tokens": { "type": "integer", "minimum": 1 },
+        "turns": { "type": "integer", "minimum": 1 },
+        "usd": { "type": "number", "exclusiveMinimum": 0 }
+      }
+    }
+  }
+}
