@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/ouroboric-dev/gungnir/schema/finding.schema.json",
+  "title": "finding",
+  "description": "A typed finding from a check or a reviewer (spec §4.6).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "source", "severity", "location", "claim", "status"],
+  "properties": {
+    "id": { "type": "string", "minLength": 1 },
+    "source": { "type": "string", "minLength": 1 },
+    "severity": { "enum": ["blocker", "major", "minor"] },
+    "location": { "type": "string", "pattern": "^[^\\s:]+:[0-9]+(-[0-9]+)?$" },
+    "claim": { "type": "string", "minLength": 1 },
+    "status": { "enum": ["open", "fixed", "disputed"] },
+    "proof": { "type": "string", "minLength": 1 }
+  },
+  "if": { "properties": { "status": { "const": "fixed" } } },
+  "then": { "required": ["proof"] }
+}
