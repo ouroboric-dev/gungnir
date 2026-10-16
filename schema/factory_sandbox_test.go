@@ -51,3 +51,22 @@ func TestFactorySandboxRefusals(t *testing.T) {
 		})
 	}
 }
+
+func TestRolePrice(t *testing.T) {
+	roles := "roles:\n  reviewer: { agent: opencode, model: openrouter/x/y, price: { input: 0.14, output: 0.28, cache_read: 0.014 } }\n"
+	caps := "budget:\n  per_run: { tokens: 1, turns: 1, usd: 1 }\n  per_day: { tokens: 1, turns: 1, usd: 1 }\n"
+	f, err := ParseFactory("factory.yaml", []byte(roles+caps+sandboxBlock))
+	if err != nil || f.Roles["reviewer"].Price == nil || f.Roles["reviewer"].Price.Output != 0.28 {
+		t.Fatalf("ParseFactory() = %+v, %v", f, err)
+	}
+	for name, p := range map[string]string{
+		"a negative price": "{ input: -1, output: 1 }",
+		"no output price":  "{ input: 1 }",
+		"an unknown price": "{ input: 1, output: 1, discount: 2 }",
+	} {
+		bad := "roles:\n  reviewer: { agent: opencode, model: openrouter/x/y, price: " + p + " }\n"
+		if _, err := ParseFactory("factory.yaml", []byte(bad+caps+sandboxBlock)); err == nil {
+			t.Errorf("%s: ParseFactory() = nil, want an error", name)
+		}
+	}
+}

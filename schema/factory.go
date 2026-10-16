@@ -44,6 +44,15 @@ type Role struct {
 	Agent  string `yaml:"agent"`
 	Model  string `yaml:"model"`
 	Script string `yaml:"script"` // scripted adapter only: the script, relative to factory.yaml
+	Price  *Price `yaml:"price"`  // optional: dollars per million tokens, for a tool that reports no cost of its own (spec §5)
+}
+
+// Price is a model's price in dollars per million tokens.
+type Price struct {
+	Input      float64 `yaml:"input"`
+	Output     float64 `yaml:"output"`
+	CacheRead  float64 `yaml:"cache_read"`
+	CacheWrite float64 `yaml:"cache_write"`
 }
 
 // Budget holds the caps. Both are required, and the factory ships no default values.
