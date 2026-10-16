@@ -43,7 +43,7 @@ func TestLedgerEventSchema(t *testing.T) {
 		}
 	}
 	bad := map[string]string{
-		"an unknown event": strings.Replace(mustJSON(t, event(gungnir.EventRunStarted)), `"run_started"`, `"run_paused"`, 1),
+		"an unknown event": strings.Replace(mustJSON(t, event(gungnir.EventRunStarted)), `"run_started"`, `"run_exploded"`, 1),
 		"no prev":          strings.Replace(mustJSON(t, event(gungnir.EventRunStarted)), `,"prev":"`+zeros+`"`, "", 1),
 		"a short prev":     strings.Replace(mustJSON(t, event(gungnir.EventRunStarted)), zeros, "abc", 1),
 		"an unknown field": strings.Replace(mustJSON(t, event(gungnir.EventRunStarted)), `{`, `{"tokens":5,`, 1),
@@ -98,5 +98,30 @@ func TestSandboxEvents(t *testing.T) {
 		if err := ValidateEvent(line); err != nil {
 			t.Errorf("%s: %v", name, err)
 		}
+	}
+}
+
+func TestRetryPauseAndFindingEvents(t *testing.T) {
+	for name, n := range map[string]gungnir.EventName{"retry": gungnir.EventRetry, "run_paused": gungnir.EventRunPaused,
+		"finding_raised": gungnir.EventFindingRaised, "finding_closed": gungnir.EventFindingClosed, "finding_reopened": gungnir.EventFindingReopened} {
+		if string(n) != name || !slices.Contains(gungnir.Events(), n) {
+			t.Errorf("%s isn't a ledger event", name)
+		}
+	}
+	e := event(gungnir.EventFindingClosed)
+	e.Node, e.FindingID, e.FindingSource, e.FindingSeverity, e.FindingAttempts, e.FindingReopens = "build", "check-test", "test", "blocker", 3, 1
+	line := mustJSON(t, e)
+	for _, key := range []string{`"ygg.finding.id":"check-test"`, `"ygg.finding.source":"test"`, `"ygg.finding.severity":"blocker"`,
+		`"ygg.finding.attempts":3`, `"ygg.finding.reopens":1`} {
+		if !strings.Contains(line, key) {
+			t.Errorf("line lacks %s:\n%s", key, line)
+		}
+	}
+	if err := ValidateEvent([]byte(line)); err != nil {
+		t.Errorf("ValidateEvent() = %v", err)
+	}
+	bad := strings.Replace(line, `"blocker"`, `"critical"`, 1)
+	if err := ValidateEvent([]byte(bad)); err == nil {
+		t.Error("a finding with severity critical: ValidateEvent() = nil")
 	}
 }

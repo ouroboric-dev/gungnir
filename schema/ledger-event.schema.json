@@ -17,7 +17,8 @@
                "node_finished", "node_failed", "check_result", "gate_pending", "gate_approved",
                "gate_rejected", "gate_auto_passed", "loop_attempt", "escalation", "routing_lookup",
                "budget_warning", "policy_violation", "pointer_moved", "mode_changed", "config_changed",
-               "repo_created", "sandbox_up", "sandbox_down"]
+               "repo_created", "sandbox_up", "sandbox_down", "retry", "run_paused", "finding_raised",
+               "finding_closed", "finding_reopened"]
     },
     "ygg.attempt": { "type": "integer", "minimum": 1 },
     "gen_ai.agent.name": { "type": "string" },
@@ -40,6 +41,11 @@
     "ygg.config.sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
     "ygg.ref.commit": { "type": "string", "pattern": "^[0-9a-f]{40,64}$" },
     "ygg.ref.gate_file": { "type": "string" },
+    "ygg.finding.id": { "type": "string", "minLength": 1 },
+    "ygg.finding.source": { "type": "string", "minLength": 1 },
+    "ygg.finding.severity": { "enum": ["blocker", "major", "minor"] },
+    "ygg.finding.attempts": { "type": "integer", "minimum": 1 },
+    "ygg.finding.reopens": { "type": "integer", "minimum": 1 },
     "prev": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
   }
 }
