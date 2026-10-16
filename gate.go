@@ -26,12 +26,13 @@ const (
 	GatePolicyViolation Gate = "policy-violation"
 	GateShrinkGuard     Gate = "shrink-guard"
 	GateGuardrailChange Gate = "guardrail-change"
+	GateRepoAdmin       Gate = "repo-admin" // change remote-creates-repos: an action that needs admin rights on a hosted repo
 )
 
 var (
 	softGates = []Gate{GateDesign, GateSpec, GatePlan, GateFeature, GateMerge, GatePointer, GatePointerContract}
 	hardGates = []Gate{GateDeployProd, GateStoreSubmit, GateRealSecrets, GateBudgetCap, GateExternalInput,
-		GatePolicyViolation, GateShrinkGuard, GateGuardrailChange}
+		GatePolicyViolation, GateShrinkGuard, GateGuardrailChange, GateRepoAdmin}
 )
 
 // Hard reports whether g is a hard approval point.

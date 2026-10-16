@@ -13,7 +13,8 @@
       "propertyNames": {
         "enum": ["design", "spec", "plan", "feature", "merge", "pointer", "pointer-contract",
                  "deploy-prod", "store-submit", "real-secrets-or-user-data", "budget-cap",
-                 "external-input", "policy-violation", "shrink-guard", "guardrail-change"]
+                 "external-input", "policy-violation", "shrink-guard", "guardrail-change",
+                 "repo-admin"]
       },
       "additionalProperties": { "enum": ["stop", "auto"] }
     },

@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/ouroboric-dev/gungnir/schema/umbrella.schema.json",
+  "title": "umbrella.yaml",
+  "description": "An umbrella of the instance tree: who owns it, who can see it, and its child nodes (spec §3.1). Only the top of the tree sets root: a project, or a company umbrella holding projects. Submodules not listed under children are not nodes.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["owner", "visibility"],
+  "properties": {
+    "root": { "type": "boolean" },
+    "owner": { "$ref": "#/$defs/owner" },
+    "visibility": { "$ref": "#/$defs/visibility" },
+    "children": {
+      "type": "object",
+      "propertyNames": { "pattern": "^[a-z0-9][a-z0-9._-]*(/[a-z0-9][a-z0-9._-]*)*$" },
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["kind", "owner", "visibility"],
+        "properties": {
+          "kind": { "enum": ["umbrella", "leaf"] },
+          "owner": { "$ref": "#/$defs/owner" },
+          "visibility": { "$ref": "#/$defs/visibility" }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "owner": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$" },
+    "visibility": { "enum": ["private", "public"] }
+  }
+}

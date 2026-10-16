@@ -137,3 +137,26 @@ func TestFactoryGateOverrides(t *testing.T) {
 		t.Error("CheckGates(key-points) accepts design: auto; a --mode switch must re-check it")
 	}
 }
+
+// An unknown agent is reported as unknown, not as a paid API that needs a spend limit: the operator
+// would set usd only to learn the agent doesn't exist.
+func TestFactoryNamesAnUnknownAgentBeforeAskingForASpendLimit(t *testing.T) {
+	_, err := ParseFactory("factory.yaml", []byte("roles:\n  planner: { agent: codex, model: x }\n"+fullCaps))
+	var ce *CapsError
+	if err == nil || errors.As(err, &ce) || !strings.Contains(err.Error(), "agent") {
+		t.Errorf("ParseFactory() = %v, want the schema's refusal of the agent, not a *CapsError", err)
+	}
+	if !KnownAgent("scripted") || KnownAgent("codex") {
+		t.Error("KnownAgent is wrong")
+	}
+	for _, a := range agents { // the Go list and the schema's enum must agree
+		caps := "budget:\n  per_run: { tokens: 1, turns: 1, usd: 1 }\n  per_day: { tokens: 1, turns: 1, usd: 1 }\n"
+		script := ""
+		if a == "scripted" {
+			script = ", script: s.yaml"
+		}
+		if _, err := ParseFactory("factory.yaml", []byte("roles:\n  r: { agent: "+a+", model: m"+script+" }\n"+caps)); err != nil {
+			t.Errorf("known agent %s: %v", a, err)
+		}
+	}
+}

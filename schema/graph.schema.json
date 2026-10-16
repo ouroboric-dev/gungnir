@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/ouroboric-dev/gungnir/schema/graph.schema.json",
   "title": "graph.yaml",
-  "description": "A realm's graph: nodes run in order; a gate node is an approval point (spec §4.2, §7). Loop nodes come in a later schema version.",
+  "description": "A realm's graph: nodes run in order; a gate node is an approval point (spec §4.2, §7). Exec and agent nodes work in a repo of the project, merge nodes land a leaf's run branch through the merge gate (§4.5), pointer nodes move a leaf's pointer one level (§3.4). Loop nodes come in a later schema version.",
   "type": "object",
   "additionalProperties": false,
   "required": ["name", "version", "nodes"],
@@ -14,11 +14,13 @@
   "$defs": {
     "id": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
     "version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" },
-    "duration": { "type": "string", "pattern": "^[0-9]+(ms|s|m|h)$" },
+    "duration": { "type": "string", "pattern": "^[1-9][0-9]*(ms|s|m|h)$" },
+    "repo": { "type": "string", "pattern": "^(\\.|[a-z0-9][a-z0-9._-]*(/[a-z0-9][a-z0-9._-]*)*)$" },
+    "names": { "type": "array", "items": { "$ref": "#/$defs/id" } },
     "node": {
       "type": "object",
       "required": ["id", "kind"],
-      "properties": { "kind": { "enum": ["exec", "agent", "gate"] } },
+      "properties": { "kind": { "enum": ["exec", "agent", "gate", "merge", "pointer"] } },
       "oneOf": [
         {
           "additionalProperties": false,
@@ -27,6 +29,7 @@
             "id": { "$ref": "#/$defs/id" },
             "kind": { "const": "exec" },
             "run": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
+            "repo": { "$ref": "#/$defs/repo" },
             "timeout": { "$ref": "#/$defs/duration" }
           }
         },
@@ -40,6 +43,7 @@
             "prompt": { "type": "string", "minLength": 1 },
             "read_only": { "type": "boolean" },
             "max_turns": { "type": "integer", "minimum": 1 },
+            "repo": { "$ref": "#/$defs/repo" },
             "timeout": { "$ref": "#/$defs/duration" }
           }
         },
@@ -52,9 +56,34 @@
             "gate": {
               "enum": ["design", "spec", "plan", "feature", "merge", "pointer", "pointer-contract",
                        "deploy-prod", "store-submit", "real-secrets-or-user-data", "budget-cap",
-                       "external-input", "policy-violation", "shrink-guard", "guardrail-change"]
+                       "external-input", "policy-violation", "shrink-guard", "guardrail-change",
+                       "repo-admin"]
             },
             "reruns": { "$ref": "#/$defs/id" }
+          }
+        },
+        {
+          "additionalProperties": false,
+          "required": ["repo", "checks"],
+          "properties": {
+            "id": { "$ref": "#/$defs/id" },
+            "kind": { "const": "merge" },
+            "repo": { "$ref": "#/$defs/repo" },
+            "checks": { "$ref": "#/$defs/names", "minItems": 1 },
+            "timeout": { "$ref": "#/$defs/duration" }
+          }
+        },
+        {
+          "additionalProperties": false,
+          "required": ["repo"],
+          "properties": {
+            "id": { "$ref": "#/$defs/id" },
+            "kind": { "const": "pointer" },
+            "repo": { "$ref": "#/$defs/repo" },
+            "checks": { "$ref": "#/$defs/names" },
+            "acceptance": { "$ref": "#/$defs/names" },
+            "generated": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+            "timeout": { "$ref": "#/$defs/duration" }
           }
         }
       ]
