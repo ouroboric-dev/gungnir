@@ -63,3 +63,8 @@ func (f Finding) Validate() error {
 	}
 	return errors.Join(errs...)
 }
+
+// Report is a reviewer's whole answer: every finding it holds open or closes (spec §4.6).
+type Report struct {
+	Findings []Finding `json:"findings"`
+}

@@ -125,3 +125,42 @@ func TestRetryPauseAndFindingEvents(t *testing.T) {
 		t.Error("a finding with severity critical: ValidateEvent() = nil")
 	}
 }
+
+func TestParseReport(t *testing.T) {
+	open := `{"id":"spec-1","source":"spec","severity":"major","location":"api/auth.go:42","claim":"no throttle","status":"open"}`
+	fixed := `{"id":"spec-2","source":"spec","severity":"minor","location":"api/auth.go:50","claim":"no doc","status":"fixed","proof":"api/auth.go:51 adds it; check test passed"}`
+	for name, answer := range map[string]string{
+		"no findings":     `{"findings":[]}`,
+		"an open finding": `{"findings":[` + open + `]}`,
+		"open and fixed":  "\n  {\"findings\":[" + open + "," + fixed + "]}\n",
+		"in a fence":      "```json\n{\"findings\":[" + open + "]}\n```\n",
+		"in a bare fence": "```\n{\"findings\":[]}\n```",
+	} {
+		r, err := ParseReport([]byte(answer))
+		if err != nil {
+			t.Errorf("%s: ParseReport() = %v", name, err)
+		} else if name == "open and fixed" && (len(r.Findings) != 2 || r.Findings[1].Proof == "") {
+			t.Errorf("%s: findings = %+v", name, r.Findings)
+		}
+	}
+	for name, answer := range map[string]string{
+		"prose":                    "The code looks fine to me.",
+		"prose before the report":  "Here you go:\n{\"findings\":[]}",
+		"prose after a fence":      "```json\n{\"findings\":[]}\n```\nDone.",
+		"two fences":               "```json\n{\"findings\":[]}\n```\n```json\n{\"findings\":[]}\n```",
+		"an unclosed fence":        "```json\n{\"findings\":[]}",
+		"an empty answer":          "",
+		"no findings key":          `{}`,
+		"findings null":            `{"findings":null}`,
+		"an extra key":             `{"findings":[],"verdict":"pass"}`,
+		"a finding with no place":  `{"findings":[{"id":"a","source":"s","severity":"major","claim":"c","status":"open"}]}`,
+		"fixed with no proof":      `{"findings":[{"id":"a","source":"s","severity":"major","location":"a.go:1","claim":"c","status":"fixed"}]}`,
+		"an unknown status":        `{"findings":[{"id":"a","source":"s","severity":"major","location":"a.go:1","claim":"c","status":"closed"}]}`,
+		"an id used twice":         `{"findings":[` + open + `,` + open + `]}`,
+		"a finding with extra key": `{"findings":[{"id":"a","source":"s","severity":"major","location":"a.go:1","claim":"c","status":"open","fix":"x"}]}`,
+	} {
+		if r, err := ParseReport([]byte(answer)); err == nil {
+			t.Errorf("%s: ParseReport() = %+v, nil; want an error: unreadable output is never a pass", name, r)
+		}
+	}
+}

@@ -19,19 +19,26 @@ var files embed.FS
 
 const base = "https://github.com/ouroboric-dev/gungnir/schema/"
 
-// compile compiles one embedded schema. Its $id must be base + name.
+// compile compiles one embedded schema. Its $id must be base + name. Every embedded schema is a
+// resource of the compiler, so a schema may refer to another by its file name.
 func compile(name string) (*jsonschema.Schema, error) {
-	raw, err := files.ReadFile(name)
+	entries, err := files.ReadDir(".")
 	if err != nil {
 		return nil, err
-	}
-	doc, err := jsonschema.UnmarshalJSON(bytes.NewReader(raw))
-	if err != nil {
-		return nil, fmt.Errorf("%s: %w", name, err)
 	}
 	c := jsonschema.NewCompiler()
-	if err := c.AddResource(base+name, doc); err != nil {
-		return nil, err
+	for _, e := range entries {
+		raw, err := files.ReadFile(e.Name())
+		if err != nil {
+			return nil, err
+		}
+		doc, err := jsonschema.UnmarshalJSON(bytes.NewReader(raw))
+		if err != nil {
+			return nil, fmt.Errorf("%s: %w", e.Name(), err)
+		}
+		if err := c.AddResource(base+e.Name(), doc); err != nil {
+			return nil, err
+		}
 	}
 	return c.Compile(base + name)
 }
