@@ -3,6 +3,7 @@ package schema
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"slices"
 	"strings"
 
@@ -16,6 +17,26 @@ type Factory struct {
 	Roles   map[string]Role         `yaml:"roles"`
 	Budget  Budget                  `yaml:"budget"`
 	Privacy string                  `yaml:"privacy"`
+	Sandbox *Sandbox                `yaml:"sandbox"` // required when a role runs a real agent (spec §6)
+	Skills  Skills                  `yaml:"skills"`
+}
+
+// Sandbox says where the container engine is and how it sees the host's files (spec §6; sandbox
+// spike, decided 2026-10-14). The factory sets it here and never reads the shell's CONTAINER_HOST.
+type Sandbox struct {
+	Engine string  `yaml:"engine"` // the engine's socket, such as unix:///mnt/wsl/podman-sockets/.../podman-user.sock
+	Mounts []Mount `yaml:"mounts"` // host path prefixes the engine sees under another path
+}
+
+// Mount says that the engine sees the host path Host as Engine, such as a bind mount into /mnt/wsl.
+type Mount struct {
+	Host   string `yaml:"host"`
+	Engine string `yaml:"engine"`
+}
+
+// Skills configures skill loading (spec §5.1).
+type Skills struct {
+	PrivateDir string `yaml:"private_dir"` // an operator's private skills, which run.json records
 }
 
 // Role maps a role to an agent adapter and a model (spec §5).
@@ -106,6 +127,9 @@ func ParseFactory(file string, data []byte) (*Factory, error) {
 	if err := f.CheckGates(f.Mode); err != nil {
 		return nil, fmt.Errorf("%s: %w", file, err)
 	}
+	if err := f.checkSandbox(); err != nil {
+		return nil, fmt.Errorf("%s: %w", file, err)
+	}
 	return &f, nil
 }
 
@@ -157,6 +181,38 @@ func (f *Factory) CheckGates(mode gungnir.Mode) error {
 		case v == "auto" && mode != gungnir.ModeUnattended:
 			return fmt.Errorf("gates.design: auto is allowed only in unattended mode, not %s", mode)
 		}
+	}
+	return nil
+}
+
+// checkSandbox refuses a real agent without a sandbox: an adapter for a real tool never runs on the
+// host (spec §6), and a sandbox that names the host's root or lists a path twice is ambiguous.
+func (f *Factory) checkSandbox() error {
+	if f.Skills.PrivateDir != "" && !filepath.IsAbs(f.Skills.PrivateDir) {
+		return fmt.Errorf("skills.private_dir %q must be an absolute path", f.Skills.PrivateDir)
+	}
+	if f.Sandbox == nil {
+		for _, r := range sortedKeys(f.Roles) {
+			if agent := f.Roles[r].Agent; agent != "scripted" {
+				return fmt.Errorf("role %s runs on %s, which runs only in a sandbox; add a sandbox section (spec §6)", r, agent)
+			}
+		}
+		return nil
+	}
+	seen := map[string]bool{}
+	for _, m := range f.Sandbox.Mounts {
+		for _, p := range []string{m.Host, m.Engine} {
+			if !filepath.IsAbs(p) || filepath.Clean(p) != p {
+				return fmt.Errorf("sandbox.mounts: %q must be a clean, absolute path", p)
+			}
+			if p == "/" {
+				return fmt.Errorf("sandbox.mounts: the root %q is too wide", p)
+			}
+		}
+		if seen[m.Host] {
+			return fmt.Errorf("sandbox.mounts: host %q is listed twice", m.Host)
+		}
+		seen[m.Host] = true
 	}
 	return nil
 }

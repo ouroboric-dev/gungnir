@@ -33,7 +33,29 @@
         "per_day": { "$ref": "#/$defs/cap" }
       }
     },
-    "privacy": { "enum": ["standard", "strict"] }
+    "privacy": { "enum": ["standard", "strict"] },
+    "sandbox": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["engine"],
+      "properties": {
+        "engine": { "type": "string", "pattern": "^unix:///[^ ]+$", "description": "the container engine's socket; the factory never reads CONTAINER_HOST" },
+        "mounts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["host", "engine"],
+            "properties": { "host": { "type": "string" }, "engine": { "type": "string" } }
+          }
+        }
+      }
+    },
+    "skills": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": { "private_dir": { "type": "string", "minLength": 1 } }
+    }
   },
   "$defs": {
     "role": {
