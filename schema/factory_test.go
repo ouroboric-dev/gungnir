@@ -195,3 +195,19 @@ func TestPaysPerToken(t *testing.T) {
 		t.Errorf("PaysPerToken() = %v and %v, want false and true", sub.PaysPerToken(), paid.PaysPerToken())
 	}
 }
+
+func TestBudgetJournal(t *testing.T) {
+	caps := "budget:\n  per_run: { tokens: 1, turns: 1 }\n  per_day: { tokens: 1, turns: 1 }\n  journal: "
+	f, err := ParseFactory("factory.yaml", []byte(scriptedRoles+caps+"/var/lib/ygg/spend\n"))
+	if err != nil || f.Budget.Journal != "/var/lib/ygg/spend" {
+		t.Fatalf("ParseFactory() = %+v, %v", f, err)
+	}
+	if f, err := ParseFactory("factory.yaml", []byte(scriptedRoles+strings.TrimSuffix(caps, "  journal: "))); err != nil || f.Budget.Journal != "" {
+		t.Errorf("no journal: %+v, %v; want it empty", f, err)
+	}
+	for name, j := range map[string]string{"relative": "spend", "unclean": "/var/../spend", "empty": `""`} {
+		if _, err := ParseFactory("factory.yaml", []byte(scriptedRoles+caps+j+"\n")); err == nil {
+			t.Errorf("%s journal %q: ParseFactory() = nil, want an error", name, j)
+		}
+	}
+}

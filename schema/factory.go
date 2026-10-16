@@ -57,8 +57,9 @@ type Price struct {
 
 // Budget holds the caps. Both are required, and the factory ships no default values.
 type Budget struct {
-	PerRun Cap `yaml:"per_run"`
-	PerDay Cap `yaml:"per_day"`
+	PerRun  Cap    `yaml:"per_run"`
+	PerDay  Cap    `yaml:"per_day"`
+	Journal string `yaml:"journal"` // an absolute folder for the spend journal the per-day cap sums; "" means the operator's state folder
 }
 
 // Cap limits tokens and turns, and dollars when a role bills a paid API.
@@ -222,6 +223,9 @@ func (f *Factory) CheckGates(mode gungnir.Mode) error {
 // checkSandbox refuses a real agent without a sandbox: an adapter for a real tool never runs on the
 // host (spec §6), and a sandbox that names the host's root or lists a path twice is ambiguous.
 func (f *Factory) checkSandbox() error {
+	if j := f.Budget.Journal; j != "" && (!filepath.IsAbs(j) || filepath.Clean(j) != j) {
+		return fmt.Errorf("budget.journal %q must be a clean, absolute path", j)
+	}
 	if f.Skills.PrivateDir != "" && !filepath.IsAbs(f.Skills.PrivateDir) {
 		return fmt.Errorf("skills.private_dir %q must be an absolute path", f.Skills.PrivateDir)
 	}
