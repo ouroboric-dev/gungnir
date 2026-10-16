@@ -50,8 +50,8 @@ func TestHardGatesAreTheSpecList(t *testing.T) {
 			t.Errorf("%s.Known() = false", g)
 		}
 	}
-	if len(Gates()) != 16 {
-		t.Errorf("len(Gates()) = %d, want 16", len(Gates()))
+	if len(Gates()) != 17 {
+		t.Errorf("len(Gates()) = %d, want 17", len(Gates()))
 	}
 	if Gate("nope").Known() || Gate("nope").Hard() {
 		t.Error(`Gate("nope") is known or hard`)
@@ -142,5 +142,11 @@ func TestFailureOfReadsASessionError(t *testing.T) {
 	var se *SessionError
 	if !errors.As(quota, &se) || se.Usage.Turns != 3 || !strings.Contains(quota.Error(), "credits used up") {
 		t.Errorf("the usage and the message must survive wrapping: %v", quota)
+	}
+}
+
+func TestEscalationIsASoftApprovalPoint(t *testing.T) {
+	if GateEscalation != "escalation" || !GateEscalation.Known() || GateEscalation.Hard() {
+		t.Errorf("escalation: known %v, hard %v; want a known, soft approval point", GateEscalation.Known(), GateEscalation.Hard())
 	}
 }

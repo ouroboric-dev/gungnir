@@ -55,7 +55,7 @@
             "id": { "$ref": "#/$defs/id" },
             "kind": { "const": "gate" },
             "gate": {
-              "enum": ["design", "spec", "plan", "feature", "merge", "pointer", "pointer-contract",
+              "enum": ["design", "spec", "plan", "feature", "merge", "pointer", "pointer-contract", "escalation",
                        "deploy-prod", "store-submit", "real-secrets-or-user-data", "budget-cap",
                        "external-input", "policy-violation", "shrink-guard", "guardrail-change",
                        "repo-admin"]

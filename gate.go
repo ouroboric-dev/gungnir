@@ -16,6 +16,7 @@ const (
 	GateMerge           Gate = "merge"
 	GatePointer         Gate = "pointer"
 	GatePointerContract Gate = "pointer-contract"
+	GateEscalation      Gate = "escalation" // a loop ran out of attempts, or its reviewer's output could not be read (spec §7.3)
 
 	// The hard approval points stop in every mode, and no config can override them.
 	GateDeployProd      Gate = "deploy-prod"
@@ -30,7 +31,7 @@ const (
 )
 
 var (
-	softGates = []Gate{GateDesign, GateSpec, GatePlan, GateFeature, GateMerge, GatePointer, GatePointerContract}
+	softGates = []Gate{GateDesign, GateSpec, GatePlan, GateFeature, GateMerge, GatePointer, GatePointerContract, GateEscalation}
 	hardGates = []Gate{GateDeployProd, GateStoreSubmit, GateRealSecrets, GateBudgetCap, GateExternalInput,
 		GatePolicyViolation, GateShrinkGuard, GateGuardrailChange, GateRepoAdmin}
 )

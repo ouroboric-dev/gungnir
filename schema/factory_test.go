@@ -211,3 +211,13 @@ func TestBudgetJournal(t *testing.T) {
 		}
 	}
 }
+
+func TestEscalationCanBeSetToStopButNeverToAuto(t *testing.T) {
+	if _, err := ParseFactory("factory.yaml", []byte(scriptedRoles+fullCaps+"gates:\n  escalation: stop\n")); err != nil {
+		t.Errorf("escalation: stop: %v", err)
+	}
+	_, err := ParseFactory("factory.yaml", []byte(scriptedRoles+fullCaps+"gates:\n  escalation: auto\n"))
+	if err == nil || !strings.Contains(err.Error(), "gates.escalation") {
+		t.Errorf("escalation: auto: ParseFactory() = %v, want an error naming gates.escalation", err)
+	}
+}
