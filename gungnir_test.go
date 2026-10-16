@@ -1,8 +1,11 @@
 package gungnir
 
 import (
+	"errors"
+	"fmt"
 	"math"
 	"slices"
+	"strings"
 	"testing"
 )
 
@@ -95,5 +98,49 @@ func TestFindingValidate(t *testing.T) {
 	fixed.Status, fixed.Proof = FindingFixed, "api/auth.go:44 limits tries; check run 7 rung 4 passed"
 	if err := fixed.Validate(); err != nil {
 		t.Errorf("fixed with proof: %v", err)
+	}
+}
+
+func TestAResultNamesHowItFailed(t *testing.T) {
+	for _, k := range []FailureKind{"", FailureAgent, FailureTransient, FailureQuota} {
+		if err := (Result{Status: StatusFailed, Failure: k}).Validate(); err != nil {
+			t.Errorf("failure %q: Validate() = %v, want nil", k, err)
+		}
+	}
+	bad := map[string]Result{
+		"a kind on a success":   {Status: StatusOK, Failure: FailureQuota},
+		"an unknown kind":       {Status: StatusFailed, Failure: "flaky"},
+		"infra is not a result": {Status: StatusFailed, Failure: FailureInfra},
+		"an answer too long":    {Status: StatusOK, Output: strings.Repeat("x", MaxOutput+1)},
+	}
+	for name, r := range bad {
+		if err := r.Validate(); err == nil {
+			t.Errorf("%s: Validate() = nil, want an error", name)
+		}
+	}
+	if err := (Result{Status: StatusOK, Output: strings.Repeat("x", MaxOutput)}).Validate(); err != nil {
+		t.Errorf("an answer at the limit: Validate() = %v, want nil", err)
+	}
+}
+
+func TestFailureOfReadsASessionError(t *testing.T) {
+	quota := fmt.Errorf("wrapped: %w", &SessionError{Kind: FailureQuota, Err: errors.New("credits used up"), Usage: Usage{Turns: 3}})
+	cases := map[string]struct {
+		err  error
+		want FailureKind
+	}{
+		"a quota error":            {quota, FailureQuota},
+		"an infra error":           {&SessionError{Kind: FailureInfra, Err: errors.New("podman")}, FailureInfra},
+		"a session error w/o kind": {&SessionError{Err: errors.New("x")}, FailureAgent},
+		"a plain error":            {errors.New("exit 1"), FailureAgent},
+	}
+	for name, c := range cases {
+		if got := FailureOf(c.err); got != c.want {
+			t.Errorf("%s: FailureOf() = %q, want %q", name, got, c.want)
+		}
+	}
+	var se *SessionError
+	if !errors.As(quota, &se) || se.Usage.Turns != 3 || !strings.Contains(quota.Error(), "credits used up") {
+		t.Errorf("the usage and the message must survive wrapping: %v", quota)
 	}
 }

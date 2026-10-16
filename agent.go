@@ -3,6 +3,7 @@ package gungnir
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math"
 	"time"
@@ -60,14 +61,58 @@ func (u Usage) Add(v Usage) Usage {
 	}
 }
 
+// FailureKind says how a session failed, which decides what happens next (spec §12).
+type FailureKind string
+
+const (
+	// FailureAgent is the default: a non-zero exit, a timeout, a turn limit or output that can't be
+	// read. It counts as a loop attempt.
+	FailureAgent FailureKind = "agent"
+	// FailureTransient is an HTTP 429 or 5xx, a network error or a CLI that crashed at start. It is
+	// retried with backoff, and is not a loop attempt.
+	FailureTransient FailureKind = "transient"
+	// FailureQuota is a provider quota or credit that is used up. The run pauses until it is back.
+	FailureQuota FailureKind = "quota"
+	// FailureInfra is the sandbox or the engine failing under a session. The run stops, with no retry loop.
+	FailureInfra FailureKind = "infra"
+)
+
+// MaxOutput is the most bytes of a session's final answer a Result holds. A longer answer is an
+// agent failure, never a truncated pass.
+const MaxOutput = 256 << 10
+
 // Result is how a session ended and what it cost.
 type Result struct {
 	Status         Status
 	Summary        string
 	Usage          Usage
 	TranscriptPath string
-	Provider       string // who served the model, such as "anthropic" or "openrouter"; may be empty
-	CLIVersion     string // the agent tool's version; may be empty
+	Provider       string      // who served the model, such as "anthropic" or "openrouter"; may be empty
+	CLIVersion     string      // the agent tool's version; may be empty
+	Failure        FailureKind // a failed result: how it failed; empty means FailureAgent
+	Output         string      // the session's final answer, whole, up to MaxOutput bytes; a reviewer's findings come in it
+}
+
+// SessionError is a session that ended without a usable Result. Usage is what could be read of the
+// session before it ended: a lower bound, so the caps count at least that much. A plain error from an
+// adapter is an agent failure.
+type SessionError struct {
+	Kind  FailureKind
+	Err   error
+	Usage Usage
+}
+
+func (e *SessionError) Error() string { return e.Err.Error() }
+func (e *SessionError) Unwrap() error { return e.Err }
+
+// FailureOf returns how err failed a session: the kind of the first *SessionError in its chain, or
+// FailureAgent for any other error.
+func FailureOf(err error) FailureKind {
+	var se *SessionError
+	if errors.As(err, &se) && se.Kind != "" {
+		return se.Kind
+	}
+	return FailureAgent
 }
 
 // Validate refuses a result that could be misread as a pass. Missing or malformed data is never
@@ -82,6 +127,18 @@ func (r Result) Validate() error {
 	}
 	if u.CostUSD < 0 || math.IsNaN(u.CostUSD) || math.IsInf(u.CostUSD, 0) {
 		return fmt.Errorf("result cost %v is not a finite, non-negative number", u.CostUSD)
+	}
+	switch r.Failure {
+	case "":
+	case FailureAgent, FailureTransient, FailureQuota:
+		if r.Status != StatusFailed {
+			return fmt.Errorf("result status %q has a failure kind %q", r.Status, r.Failure)
+		}
+	default:
+		return fmt.Errorf("result failure kind %q is not agent, transient or quota", r.Failure)
+	}
+	if len(r.Output) > MaxOutput {
+		return fmt.Errorf("result output is %d bytes, over the limit of %d", len(r.Output), MaxOutput)
 	}
 	return nil
 }
