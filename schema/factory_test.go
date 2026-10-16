@@ -160,3 +160,38 @@ func TestFactoryNamesAnUnknownAgentBeforeAskingForASpendLimit(t *testing.T) {
 		}
 	}
 }
+
+func TestCapReached(t *testing.T) {
+	c := Cap{Tokens: 1000, Turns: 10, USD: 2}
+	cases := []struct {
+		name string
+		u    gungnir.Usage
+		usd  bool
+		want gungnir.CapDimension // "" for no cap reached
+	}{
+		{"room left", gungnir.Usage{InTok: 400, OutTok: 500, Turns: 9, CostUSD: 1.99}, true, ""},
+		{"tokens exactly at the cap", gungnir.Usage{InTok: 600, OutTok: 400}, true, gungnir.CapTokens},
+		{"cache reads don't count", gungnir.Usage{InTok: 1, CacheTok: 1 << 40}, true, ""},
+		{"turns at the cap", gungnir.Usage{Turns: 10}, true, gungnir.CapTurns},
+		{"dollars at the cap on a paid API", gungnir.Usage{CostUSD: 2}, true, gungnir.CapUSD},
+		{"dollars of a subscription never count", gungnir.Usage{CostUSD: 500}, false, ""},
+	}
+	for _, tc := range cases {
+		got := c.Reached(gungnir.CapRun, tc.u, tc.usd)
+		switch {
+		case tc.want == "" && got != nil, tc.want != "" && (got == nil || got.Dimension != tc.want):
+			t.Errorf("%s: Reached() = %+v, want %q", tc.name, got, tc.want)
+		}
+	}
+	if got := (Cap{}).Reached(gungnir.CapDay, gungnir.Usage{}, false); got == nil || got.Scope != gungnir.CapDay {
+		t.Errorf("a cap of zero: Reached() = %+v, want it reached at once", got)
+	}
+}
+
+func TestPaysPerToken(t *testing.T) {
+	sub := &Factory{Roles: map[string]Role{"a": {Agent: "claude-code"}, "b": {Agent: "scripted"}}}
+	paid := &Factory{Roles: map[string]Role{"a": {Agent: "claude-code"}, "b": {Agent: "opencode"}}}
+	if sub.PaysPerToken() || !paid.PaysPerToken() {
+		t.Errorf("PaysPerToken() = %v and %v, want false and true", sub.PaysPerToken(), paid.PaysPerToken())
+	}
+}

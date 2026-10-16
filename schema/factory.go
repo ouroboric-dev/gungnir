@@ -68,6 +68,31 @@ type Cap struct {
 	USD    float64 `yaml:"usd"`
 }
 
+// Reached returns the first limit of c that u has reached, or nil. A limit is reached when use equals
+// it, so a cap of zero stops everything. Dollars count only when usd is true, which is when a role
+// bills a paid API (see PaidAPI): a subscription's dollar figure is what the run would cost on the API.
+func (c Cap) Reached(scope gungnir.CapScope, u gungnir.Usage, usd bool) *gungnir.CapError {
+	switch {
+	case u.CapTokens() >= c.Tokens:
+		return &gungnir.CapError{Scope: scope, Dimension: gungnir.CapTokens, Used: float64(u.CapTokens()), Limit: float64(c.Tokens)}
+	case u.Turns >= c.Turns:
+		return &gungnir.CapError{Scope: scope, Dimension: gungnir.CapTurns, Used: float64(u.Turns), Limit: float64(c.Turns)}
+	case usd && u.CostUSD >= c.USD:
+		return &gungnir.CapError{Scope: scope, Dimension: gungnir.CapUSD, Used: u.CostUSD, Limit: c.USD}
+	}
+	return nil
+}
+
+// PaysPerToken reports whether any role of f bills a paid API, so the caps count dollars.
+func (f *Factory) PaysPerToken() bool {
+	for _, r := range f.Roles {
+		if PaidAPI(r.Agent) {
+			return true
+		}
+	}
+	return false
+}
+
 // agents are the adapters factory.schema.json accepts.
 var agents = []string{"claude-code", "opencode", "scripted"}
 
