@@ -4,6 +4,17 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"unicode/utf8"
+)
+
+// The most characters each text field of a finding may hold. A finding goes back into a prompt on every
+// attempt, so a reviewer's finding can't be as long as a book.
+const (
+	MaxID       = 100
+	MaxSource   = 100
+	MaxLocation = 300
+	MaxClaim    = 4000
+	MaxProof    = 2000
 )
 
 // Severity is how bad a finding is.
@@ -43,6 +54,15 @@ func (f Finding) Validate() error {
 	var errs []error
 	if f.ID == "" || f.Source == "" || f.Claim == "" {
 		errs = append(errs, errors.New("a finding needs an id, a source and a claim"))
+	}
+	for _, c := range []struct {
+		name string
+		text string
+		max  int
+	}{{"id", f.ID, MaxID}, {"source", f.Source, MaxSource}, {"location", f.Location, MaxLocation}, {"claim", f.Claim, MaxClaim}, {"proof", f.Proof, MaxProof}} {
+		if n := utf8.RuneCountInString(c.text); n > c.max {
+			errs = append(errs, fmt.Errorf("the %s is %d characters long, over the limit of %d", c.name, n, c.max))
+		}
 	}
 	switch f.Severity {
 	case SeverityBlocker, SeverityMajor, SeverityMinor:

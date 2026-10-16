@@ -150,3 +150,23 @@ func TestEscalationIsASoftApprovalPoint(t *testing.T) {
 		t.Errorf("escalation: known %v, hard %v; want a known, soft approval point", GateEscalation.Known(), GateEscalation.Hard())
 	}
 }
+
+func TestAFindingsTextsAreBounded(t *testing.T) {
+	good := Finding{ID: "F1", Source: "spec", Severity: SeverityMajor, Location: "api/auth.go:42", Claim: strings.Repeat("é", MaxClaim), Status: FindingFixed, Proof: strings.Repeat("p", MaxProof)}
+	if err := good.Validate(); err != nil {
+		t.Fatalf("a finding at every limit: %v", err)
+	}
+	for name, change := range map[string]func(*Finding){
+		"an id too long":      func(f *Finding) { f.ID = strings.Repeat("i", MaxID+1) },
+		"a source too long":   func(f *Finding) { f.Source = strings.Repeat("s", MaxSource+1) },
+		"a location too long": func(f *Finding) { f.Location = strings.Repeat("l", MaxLocation) + ":1" },
+		"a claim too long":    func(f *Finding) { f.Claim = strings.Repeat("c", MaxClaim+1) },
+		"a proof too long":    func(f *Finding) { f.Proof = strings.Repeat("p", MaxProof+1) },
+	} {
+		f := good
+		change(&f)
+		if err := f.Validate(); err == nil {
+			t.Errorf("%s: Validate() = nil, want an error", name)
+		}
+	}
+}

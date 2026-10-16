@@ -164,3 +164,14 @@ func TestParseReport(t *testing.T) {
 		}
 	}
 }
+
+func TestParseReportRefusesAFindingTooLongToGoBackIntoAPrompt(t *testing.T) {
+	long := `{"findings":[{"id":"a","source":"s","severity":"major","location":"a.go:1","claim":"` + strings.Repeat("c", gungnir.MaxClaim+1) + `","status":"open"}]}`
+	if _, err := ParseReport([]byte(long)); err == nil {
+		t.Error("ParseReport() accepted a claim over the limit")
+	}
+	ok := `{"findings":[{"id":"a","source":"s","severity":"major","location":"a.go:1","claim":"` + strings.Repeat("c", gungnir.MaxClaim) + `","status":"open"}]}`
+	if _, err := ParseReport([]byte(ok)); err != nil {
+		t.Errorf("ParseReport() = %v for a claim at the limit", err)
+	}
+}
