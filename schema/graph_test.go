@@ -3,6 +3,7 @@ package schema
 import (
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -46,12 +47,12 @@ func TestParseGraphRefuses(t *testing.T) {
 	const bySchema = "jsonschema validation failed"
 	cases := map[string]struct{ nodes, want string }{
 		"a duplicate id":                   {"  - { id: a, kind: exec, run: [echo] }\n  - { id: a, kind: exec, run: [echo] }\n", "used twice"},
-		"a loop node (not yet)":            {"  - { id: a, kind: loop }\n", bySchema},
-		"a gate with nothing before it":    {"  - { id: g, kind: gate, gate: design }\n", "no agent node before it"},
-		"a gate after only exec nodes":     {"  - { id: a, kind: exec, run: [echo] }\n  - { id: g, kind: gate, gate: plan }\n", "no agent node before it"},
-		"a gate that re-runs a later node": {agent + "  - { id: g, kind: gate, gate: plan, reruns: b }\n  - { id: b, kind: agent, role: planner, prompt: p.md }\n", "must be an agent node before it"},
-		"a gate that re-runs a gate":       {agent + "  - { id: g, kind: gate, gate: plan }\n  - { id: h, kind: gate, gate: feature, reruns: g }\n", "must be an agent node before it"},
-		"a gate that re-runs an exec node": {agent + "  - { id: e, kind: exec, run: [echo] }\n  - { id: g, kind: gate, gate: plan, reruns: e }\n", "must be an agent node before it"},
+		"a loop with nothing in it":        {"  - { id: a, kind: loop }\n", bySchema},
+		"a gate with nothing before it":    {"  - { id: g, kind: gate, gate: design }\n", "no agent or loop node before it"},
+		"a gate after only exec nodes":     {"  - { id: a, kind: exec, run: [echo] }\n  - { id: g, kind: gate, gate: plan }\n", "no agent or loop node before it"},
+		"a gate that re-runs a later node": {agent + "  - { id: g, kind: gate, gate: plan, reruns: b }\n  - { id: b, kind: agent, role: planner, prompt: p.md }\n", "must be an agent or loop node before it"},
+		"a gate that re-runs a gate":       {agent + "  - { id: g, kind: gate, gate: plan }\n  - { id: h, kind: gate, gate: feature, reruns: g }\n", "must be an agent or loop node before it"},
+		"a gate that re-runs an exec node": {agent + "  - { id: e, kind: exec, run: [echo] }\n  - { id: g, kind: gate, gate: plan, reruns: e }\n", "must be an agent or loop node before it"},
 		"an unknown approval point":        {"  - { id: a, kind: exec, run: [echo] }\n  - { id: g, kind: gate, gate: ship }\n", bySchema},
 		"exec without a command":           {"  - { id: a, kind: exec }\n", bySchema},
 		"agent with a command":             {"  - { id: a, kind: agent, role: planner, prompt: p.md, run: [echo] }\n", bySchema},
@@ -188,6 +189,82 @@ nodes:
 	} {
 		if _, err := ParseGraph("graph.yaml", []byte("name: s\nversion: 1.0.0\nnodes:\n  - "+node+"\n")); err == nil {
 			t.Errorf("%s: ParseGraph() = nil, want an error", name)
+		}
+	}
+}
+
+const loopGraph = `
+name: loopy
+version: 1.0.0
+nodes:
+  - id: build
+    kind: loop
+    repo: repos/app
+    role: implementer
+    prompt: prompts/build.md
+    skills: [ponytail-review]
+    max_turns: 60
+    timeout: 20m
+    checks: [vet, test]
+    reviewers:
+      - { id: spec, role: reviewer, prompt: prompts/review-spec.md, max_turns: 20, timeout: 10m }
+      - { id: quality, role: reviewer, prompt: prompts/review-quality.md, skills: [ponytail-review] }
+  - { id: feature-gate, kind: gate, gate: feature }
+`
+
+func TestParseGraphLoopNodes(t *testing.T) {
+	g, err := ParseGraph("graph.yaml", []byte(loopGraph))
+	if err != nil {
+		t.Fatalf("ParseGraph() = %v", err)
+	}
+	n := g.Nodes[0]
+	if n.Kind != KindLoop || n.Attempts != DefaultAttempts || DefaultAttempts != 3 || !slices.Equal(n.Checks, []string{"vet", "test"}) ||
+		len(n.Reviewers) != 2 || n.Reviewers[1].ID != "quality" || time.Duration(n.Reviewers[0].Timeout) != 10*time.Minute ||
+		n.SessionKey(n.Reviewers[0]) != "build-spec" {
+		t.Errorf("the loop node = %+v", n)
+	}
+	if g.Nodes[1].Reruns != "build" {
+		t.Errorf("the gate after a loop re-runs %q, want build", g.Nodes[1].Reruns)
+	}
+	g, err = ParseGraph("graph.yaml", []byte(strings.Replace(loopGraph, "    checks: [vet, test]\n", "    checks: [vet, test]\n    attempts: 5\n", 1)))
+	if err != nil || g.Nodes[0].Attempts != 5 {
+		t.Errorf("attempts: 5: %+v, %v", g.Nodes[0].Attempts, err)
+	}
+}
+
+func TestParseGraphRefusesLoops(t *testing.T) {
+	head := "name: l\nversion: 1.0.0\nnodes:\n"
+	loop := "  - { id: build, kind: loop, repo: repos/app, role: implementer, prompt: p.md, checks: [vet] }\n"
+	rev := func(id string) string {
+		return "{ id: " + id + ", role: reviewer, prompt: r.md }"
+	}
+	const bySchema = "jsonschema validation failed"
+	cases := map[string]struct{ nodes, want string }{
+		"no checks and no reviewers":    {"  - { id: build, kind: loop, repo: repos/app, role: implementer, prompt: p.md }\n", bySchema},
+		"no repo":                       {"  - { id: build, kind: loop, role: implementer, prompt: p.md, checks: [vet] }\n", bySchema},
+		"no role":                       {"  - { id: build, kind: loop, repo: repos/app, prompt: p.md, checks: [vet] }\n", bySchema},
+		"zero attempts":                 {strings.Replace(loop, "checks:", "attempts: 0, checks:", 1), bySchema},
+		"eleven attempts":               {strings.Replace(loop, "checks:", "attempts: 11, checks:", 1), bySchema},
+		"read_only on a loop":           {strings.Replace(loop, "checks:", "read_only: true, checks:", 1), bySchema},
+		"a check twice":                 {strings.Replace(loop, "[vet]", "[vet, vet]", 1), bySchema},
+		"an empty checks list":          {strings.Replace(loop, "[vet]", "[]", 1), bySchema},
+		"a run on a loop":               {strings.Replace(loop, "checks:", "run: [echo], checks:", 1), bySchema},
+		"a loop prompt that climbs":     {strings.Replace(loop, "p.md", "../p.md", 1), "inside the realm"},
+		"a reviewer without a role":     {strings.Replace(loop, "checks: [vet]", "reviewers: [{ id: spec, prompt: r.md }]", 1), bySchema},
+		"a reviewer that climbs":        {strings.Replace(loop, "checks: [vet]", "reviewers: [{ id: spec, role: reviewer, prompt: ../r.md }]", 1), "inside the realm"},
+		"a reviewer twice":              {strings.Replace(loop, "checks: [vet]", "reviewers: ["+rev("spec")+", "+rev("spec")+"]", 1), "used twice"},
+		"six reviewers":                 {strings.Replace(loop, "checks: [vet]", "reviewers: ["+strings.Join([]string{rev("a"), rev("b"), rev("c"), rev("d"), rev("e"), rev("f")}, ", ")+"]", 1), bySchema},
+		"a reviewer key that is a node": {strings.Replace(loop, "checks: [vet]", "reviewers: ["+rev("spec")+"]", 1) + "  - { id: build-spec, kind: exec, run: [echo] }\n", "also a node id"},
+		"two loops with one key":        {strings.Replace(loop, "checks: [vet]", "reviewers: ["+rev("b")+"]", 1) + "  - { id: build-b, kind: loop, repo: repos/app, role: implementer, prompt: p.md, reviewers: [" + rev("x") + "] }\n", "also a node id"},
+	}
+	cases["two loops whose reviewers share a session key"] = struct{ nodes, want string }{
+		"  - { id: a, kind: loop, repo: repos/app, role: implementer, prompt: p.md, reviewers: [{ id: b-c, role: reviewer, prompt: r.md }] }\n" +
+			"  - { id: a-b, kind: loop, repo: repos/app, role: implementer, prompt: p.md, reviewers: [{ id: c, role: reviewer, prompt: r.md }] }\n",
+		"is also loop a's"}
+	for name, c := range cases {
+		_, err := ParseGraph("graph.yaml", []byte(head+c.nodes))
+		if err == nil || !strings.Contains(err.Error(), c.want) {
+			t.Errorf("%s: ParseGraph() = %v, want an error containing %q", name, err, c.want)
 		}
 	}
 }

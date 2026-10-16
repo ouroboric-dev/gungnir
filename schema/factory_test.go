@@ -160,3 +160,64 @@ func TestFactoryNamesAnUnknownAgentBeforeAskingForASpendLimit(t *testing.T) {
 		}
 	}
 }
+
+func TestCapReached(t *testing.T) {
+	c := Cap{Tokens: 1000, Turns: 10, USD: 2}
+	cases := []struct {
+		name string
+		u    gungnir.Usage
+		usd  bool
+		want gungnir.CapDimension // "" for no cap reached
+	}{
+		{"room left", gungnir.Usage{InTok: 400, OutTok: 500, Turns: 9, CostUSD: 1.99}, true, ""},
+		{"tokens exactly at the cap", gungnir.Usage{InTok: 600, OutTok: 400}, true, gungnir.CapTokens},
+		{"cache reads don't count", gungnir.Usage{InTok: 1, CacheTok: 1 << 40}, true, ""},
+		{"turns at the cap", gungnir.Usage{Turns: 10}, true, gungnir.CapTurns},
+		{"dollars at the cap on a paid API", gungnir.Usage{CostUSD: 2}, true, gungnir.CapUSD},
+		{"dollars of a subscription never count", gungnir.Usage{CostUSD: 500}, false, ""},
+	}
+	for _, tc := range cases {
+		got := c.Reached(gungnir.CapRun, tc.u, tc.usd)
+		switch {
+		case tc.want == "" && got != nil, tc.want != "" && (got == nil || got.Dimension != tc.want):
+			t.Errorf("%s: Reached() = %+v, want %q", tc.name, got, tc.want)
+		}
+	}
+	if got := (Cap{}).Reached(gungnir.CapDay, gungnir.Usage{}, false); got == nil || got.Scope != gungnir.CapDay {
+		t.Errorf("a cap of zero: Reached() = %+v, want it reached at once", got)
+	}
+}
+
+func TestPaysPerToken(t *testing.T) {
+	sub := &Factory{Roles: map[string]Role{"a": {Agent: "claude-code"}, "b": {Agent: "scripted"}}}
+	paid := &Factory{Roles: map[string]Role{"a": {Agent: "claude-code"}, "b": {Agent: "opencode"}}}
+	if sub.PaysPerToken() || !paid.PaysPerToken() {
+		t.Errorf("PaysPerToken() = %v and %v, want false and true", sub.PaysPerToken(), paid.PaysPerToken())
+	}
+}
+
+func TestBudgetJournal(t *testing.T) {
+	caps := "budget:\n  per_run: { tokens: 1, turns: 1 }\n  per_day: { tokens: 1, turns: 1 }\n  journal: "
+	f, err := ParseFactory("factory.yaml", []byte(scriptedRoles+caps+"/var/lib/ygg/spend\n"))
+	if err != nil || f.Budget.Journal != "/var/lib/ygg/spend" {
+		t.Fatalf("ParseFactory() = %+v, %v", f, err)
+	}
+	if f, err := ParseFactory("factory.yaml", []byte(scriptedRoles+strings.TrimSuffix(caps, "  journal: "))); err != nil || f.Budget.Journal != "" {
+		t.Errorf("no journal: %+v, %v; want it empty", f, err)
+	}
+	for name, j := range map[string]string{"relative": "spend", "unclean": "/var/../spend", "empty": `""`} {
+		if _, err := ParseFactory("factory.yaml", []byte(scriptedRoles+caps+j+"\n")); err == nil {
+			t.Errorf("%s journal %q: ParseFactory() = nil, want an error", name, j)
+		}
+	}
+}
+
+func TestEscalationCanBeSetToStopButNeverToAuto(t *testing.T) {
+	if _, err := ParseFactory("factory.yaml", []byte(scriptedRoles+fullCaps+"gates:\n  escalation: stop\n")); err != nil {
+		t.Errorf("escalation: stop: %v", err)
+	}
+	_, err := ParseFactory("factory.yaml", []byte(scriptedRoles+fullCaps+"gates:\n  escalation: auto\n"))
+	if err == nil || !strings.Contains(err.Error(), "gates.escalation") {
+		t.Errorf("escalation: auto: ParseFactory() = %v, want an error naming gates.escalation", err)
+	}
+}

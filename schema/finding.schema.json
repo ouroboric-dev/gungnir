@@ -7,13 +7,13 @@
   "additionalProperties": false,
   "required": ["id", "source", "severity", "location", "claim", "status"],
   "properties": {
-    "id": { "type": "string", "minLength": 1 },
-    "source": { "type": "string", "minLength": 1 },
+    "id": { "type": "string", "minLength": 1, "maxLength": 100 },
+    "source": { "type": "string", "minLength": 1, "maxLength": 100 },
     "severity": { "enum": ["blocker", "major", "minor"] },
-    "location": { "type": "string", "pattern": "^[^\\s:]+:[0-9]+(-[0-9]+)?$" },
-    "claim": { "type": "string", "minLength": 1 },
+    "location": { "type": "string", "maxLength": 300, "pattern": "^[^\\s:]+:[0-9]+(-[0-9]+)?$" },
+    "claim": { "type": "string", "minLength": 1, "maxLength": 4000 },
     "status": { "enum": ["open", "fixed", "disputed"] },
-    "proof": { "type": "string", "minLength": 1 }
+    "proof": { "type": "string", "minLength": 1, "maxLength": 2000 }
   },
   "if": { "properties": { "status": { "const": "fixed" } } },
   "then": { "required": ["proof"] }

@@ -57,8 +57,9 @@ type Price struct {
 
 // Budget holds the caps. Both are required, and the factory ships no default values.
 type Budget struct {
-	PerRun Cap `yaml:"per_run"`
-	PerDay Cap `yaml:"per_day"`
+	PerRun  Cap    `yaml:"per_run"`
+	PerDay  Cap    `yaml:"per_day"`
+	Journal string `yaml:"journal"` // an absolute folder for the spend journal the per-day cap sums; "" means the operator's state folder
 }
 
 // Cap limits tokens and turns, and dollars when a role bills a paid API.
@@ -66,6 +67,31 @@ type Cap struct {
 	Tokens int64   `yaml:"tokens"`
 	Turns  int64   `yaml:"turns"`
 	USD    float64 `yaml:"usd"`
+}
+
+// Reached returns the first limit of c that u has reached, or nil. A limit is reached when use equals
+// it, so a cap of zero stops everything. Dollars count only when usd is true, which is when a role
+// bills a paid API (see PaidAPI): a subscription's dollar figure is what the run would cost on the API.
+func (c Cap) Reached(scope gungnir.CapScope, u gungnir.Usage, usd bool) *gungnir.CapError {
+	switch {
+	case u.CapTokens() >= c.Tokens:
+		return &gungnir.CapError{Scope: scope, Dimension: gungnir.CapTokens, Used: float64(u.CapTokens()), Limit: float64(c.Tokens)}
+	case u.Turns >= c.Turns:
+		return &gungnir.CapError{Scope: scope, Dimension: gungnir.CapTurns, Used: float64(u.Turns), Limit: float64(c.Turns)}
+	case usd && u.CostUSD >= c.USD:
+		return &gungnir.CapError{Scope: scope, Dimension: gungnir.CapUSD, Used: u.CostUSD, Limit: c.USD}
+	}
+	return nil
+}
+
+// PaysPerToken reports whether any role of f bills a paid API, so the caps count dollars.
+func (f *Factory) PaysPerToken() bool {
+	for _, r := range f.Roles {
+		if PaidAPI(r.Agent) {
+			return true
+		}
+	}
+	return false
 }
 
 // agents are the adapters factory.schema.json accepts.
@@ -197,6 +223,9 @@ func (f *Factory) CheckGates(mode gungnir.Mode) error {
 // checkSandbox refuses a real agent without a sandbox: an adapter for a real tool never runs on the
 // host (spec §6), and a sandbox that names the host's root or lists a path twice is ambiguous.
 func (f *Factory) checkSandbox() error {
+	if j := f.Budget.Journal; j != "" && (!filepath.IsAbs(j) || filepath.Clean(j) != j) {
+		return fmt.Errorf("budget.journal %q must be a clean, absolute path", j)
+	}
 	if f.Skills.PrivateDir != "" && !filepath.IsAbs(f.Skills.PrivateDir) {
 		return fmt.Errorf("skills.private_dir %q must be an absolute path", f.Skills.PrivateDir)
 	}

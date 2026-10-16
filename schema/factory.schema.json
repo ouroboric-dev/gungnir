@@ -11,7 +11,7 @@
     "gates": {
       "type": "object",
       "propertyNames": {
-        "enum": ["design", "spec", "plan", "feature", "merge", "pointer", "pointer-contract",
+        "enum": ["design", "spec", "plan", "feature", "merge", "pointer", "pointer-contract", "escalation",
                  "deploy-prod", "store-submit", "real-secrets-or-user-data", "budget-cap",
                  "external-input", "policy-violation", "shrink-guard", "guardrail-change",
                  "repo-admin"]
@@ -30,7 +30,8 @@
       "required": ["per_run", "per_day"],
       "properties": {
         "per_run": { "$ref": "#/$defs/cap" },
-        "per_day": { "$ref": "#/$defs/cap" }
+        "per_day": { "$ref": "#/$defs/cap" },
+        "journal": { "type": "string", "minLength": 1, "description": "an absolute folder where every run of this operator records its spend, which the per-day cap sums; empty: $XDG_STATE_HOME/ygg/spend or ~/.local/state/ygg/spend" }
       }
     },
     "privacy": { "enum": ["standard", "strict"] },

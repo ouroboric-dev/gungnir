@@ -32,6 +32,12 @@ const (
 	EventRepoCreated     EventName = "repo_created" // a remote created a leaf (change remote-creates-repos)
 	EventSandboxUp       EventName = "sandbox_up"   // a leaf's sandbox started (spec §6)
 	EventSandboxDown     EventName = "sandbox_down" // a leaf's sandbox stopped
+
+	EventRetry           EventName = "retry"            // a transient failure; the session runs again after a backoff (spec §12)
+	EventRunPaused       EventName = "run_paused"       // the provider's quota is used up; the run waits, resumable (spec §12)
+	EventFindingRaised   EventName = "finding_raised"   // a check or reviewer reported a finding (spec §4.6)
+	EventFindingClosed   EventName = "finding_closed"   // its source confirmed the fix, with proof
+	EventFindingReopened EventName = "finding_reopened" // a closed finding was reported again
 )
 
 // Events returns every event name, in the order above.
@@ -40,7 +46,8 @@ func Events() []EventName {
 		EventNodeStarted, EventNodeFinished, EventNodeFailed, EventCheckResult, EventGatePending,
 		EventGateApproved, EventGateRejected, EventGateAutoPassed, EventLoopAttempt, EventEscalation,
 		EventRoutingLookup, EventBudgetWarning, EventPolicyViolation, EventPointerMoved,
-		EventModeChanged, EventConfigChanged, EventRepoCreated, EventSandboxUp, EventSandboxDown}
+		EventModeChanged, EventConfigChanged, EventRepoCreated, EventSandboxUp, EventSandboxDown,
+		EventRetry, EventRunPaused, EventFindingRaised, EventFindingClosed, EventFindingReopened}
 }
 
 // Event is one ledger line. Fields follow OpenTelemetry's GenAI attribute names (gen_ai.*) where
@@ -76,6 +83,12 @@ type Event struct {
 	ConfigHash string `json:"ygg.config.sha256,omitempty"`
 	Commit     string `json:"ygg.ref.commit,omitempty"`
 	GateFile   string `json:"ygg.ref.gate_file,omitempty"`
+
+	FindingID       string `json:"ygg.finding.id,omitempty"`
+	FindingSource   string `json:"ygg.finding.source,omitempty"`
+	FindingSeverity string `json:"ygg.finding.severity,omitempty"`
+	FindingAttempts int    `json:"ygg.finding.attempts,omitempty"` // finding_closed: the loop attempts the finding took to close
+	FindingReopens  int    `json:"ygg.finding.reopens,omitempty"`  // finding_closed, finding_reopened: how often it came back
 
 	Prev string `json:"prev"` // hex SHA-256 of the previous line; 64 zeros on the first line
 }

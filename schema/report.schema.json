@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/ouroboric-dev/gungnir/schema/report.schema.json",
+  "title": "a reviewer's report",
+  "description": "A reviewer's whole answer: every finding it holds open or closes, and nothing else (spec §4.6). An empty list says it found nothing.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["findings"],
+  "properties": {
+    "findings": { "type": "array", "maxItems": 200, "items": { "$ref": "finding.schema.json" } }
+  }
+}
