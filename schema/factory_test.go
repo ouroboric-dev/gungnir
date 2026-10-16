@@ -79,7 +79,7 @@ func TestFactorySchemaRequiresCaps(t *testing.T) {
 			t.Errorf("got %+v", f)
 		}
 		if _, err := ParseFactory("factory.yaml", []byte(paidRoles+
-			"budget:\n  per_run: { tokens: 1000, turns: 10, usd: 5 }\n  per_day: { tokens: 2000, turns: 20, usd: 10 }\n")); err != nil {
+			"budget:\n  per_run: { tokens: 1000, turns: 10, usd: 5 }\n  per_day: { tokens: 2000, turns: 20, usd: 10 }\n"+sandboxBlock)); err != nil {
 			t.Errorf("paid roles with spend limits: %v", err)
 		}
 	})
@@ -155,7 +155,7 @@ func TestFactoryNamesAnUnknownAgentBeforeAskingForASpendLimit(t *testing.T) {
 		if a == "scripted" {
 			script = ", script: s.yaml"
 		}
-		if _, err := ParseFactory("factory.yaml", []byte("roles:\n  r: { agent: "+a+", model: m"+script+" }\n"+caps)); err != nil {
+		if _, err := ParseFactory("factory.yaml", []byte("roles:\n  r: { agent: "+a+", model: m"+script+" }\n"+caps+sandboxBlock)); err != nil {
 			t.Errorf("known agent %s: %v", a, err)
 		}
 	}

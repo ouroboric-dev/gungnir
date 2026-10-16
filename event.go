@@ -30,6 +30,8 @@ const (
 	EventModeChanged     EventName = "mode_changed"
 	EventConfigChanged   EventName = "config_changed"
 	EventRepoCreated     EventName = "repo_created" // a remote created a leaf (change remote-creates-repos)
+	EventSandboxUp       EventName = "sandbox_up"   // a leaf's sandbox started (spec §6)
+	EventSandboxDown     EventName = "sandbox_down" // a leaf's sandbox stopped
 )
 
 // Events returns every event name, in the order above.
@@ -38,7 +40,7 @@ func Events() []EventName {
 		EventNodeStarted, EventNodeFinished, EventNodeFailed, EventCheckResult, EventGatePending,
 		EventGateApproved, EventGateRejected, EventGateAutoPassed, EventLoopAttempt, EventEscalation,
 		EventRoutingLookup, EventBudgetWarning, EventPolicyViolation, EventPointerMoved,
-		EventModeChanged, EventConfigChanged, EventRepoCreated}
+		EventModeChanged, EventConfigChanged, EventRepoCreated, EventSandboxUp, EventSandboxDown}
 }
 
 // Event is one ledger line. Fields follow OpenTelemetry's GenAI attribute names (gen_ai.*) where

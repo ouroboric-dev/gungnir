@@ -37,6 +37,7 @@ type Node struct {
 	Prompt   string       `yaml:"prompt"`    // agent: the prompt file, relative to the graph
 	ReadOnly bool         `yaml:"read_only"` // agent
 	MaxTurns int          `yaml:"max_turns"` // agent
+	Skills   []string     `yaml:"skills"`    // agent: the skills loaded into its prompt, by name (spec §5.1)
 	Timeout  Duration     `yaml:"timeout"`   // exec, agent, merge and pointer
 	Gate     gungnir.Gate `yaml:"gate"`      // gate: the approval point
 	Reruns   string       `yaml:"reruns"`    // gate: the agent node a rejection re-runs; set by ParseGraph

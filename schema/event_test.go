@@ -88,3 +88,15 @@ func TestRepoCreatedIsAnEvent(t *testing.T) {
 		t.Error("repo_created isn't a ledger event")
 	}
 }
+
+func TestSandboxEvents(t *testing.T) {
+	for name, e := range map[string]gungnir.EventName{"sandbox_up": gungnir.EventSandboxUp, "sandbox_down": gungnir.EventSandboxDown} {
+		if string(e) != name || !slices.Contains(gungnir.Events(), e) {
+			t.Errorf("%s isn't a ledger event", name)
+		}
+		line, _ := json.Marshal(event(e))
+		if err := ValidateEvent(line); err != nil {
+			t.Errorf("%s: %v", name, err)
+		}
+	}
+}

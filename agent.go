@@ -27,6 +27,7 @@ type Task struct {
 	Timeout       time.Duration // 0: no limit beyond the context
 	EnvAllowlist  []string      // the host variables the session may see
 	TranscriptDir string        // where the adapter writes the session's transcript
+	Sandbox       Runner        // runs the session's commands in the leaf's sandbox; nil when the adapter works on the host
 }
 
 // Status is how a session ended.
@@ -65,6 +66,8 @@ type Result struct {
 	Summary        string
 	Usage          Usage
 	TranscriptPath string
+	Provider       string // who served the model, such as "anthropic" or "openrouter"; may be empty
+	CLIVersion     string // the agent tool's version; may be empty
 }
 
 // Validate refuses a result that could be misread as a pass. Missing or malformed data is never

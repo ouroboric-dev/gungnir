@@ -28,6 +28,15 @@
       "propertyNames": { "pattern": "^[a-z][a-z0-9-]*$" },
       "additionalProperties": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } }
     },
+    "sandbox": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["stack"],
+      "properties": {
+        "stack": { "type": "string", "pattern": "^[a-z0-9][a-z0-9./_-]*(:[A-Za-z0-9._-]+)?@sha256:[0-9a-f]{64}$", "description": "the stack layer's image, pinned by digest" },
+        "egress": { "type": "array", "items": { "type": "string", "minLength": 1 } }
+      }
+    },
     "leaves": {
       "type": "object",
       "propertyNames": { "pattern": "^[a-z0-9][a-z0-9._-]*(/[a-z0-9][a-z0-9._-]*)*$" },
