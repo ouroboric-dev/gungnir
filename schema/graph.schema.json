@@ -43,6 +43,7 @@
             "prompt": { "type": "string", "minLength": 1 },
             "read_only": { "type": "boolean" },
             "max_turns": { "type": "integer", "minimum": 1 },
+            "skills": { "$ref": "#/$defs/names", "uniqueItems": true },
             "repo": { "$ref": "#/$defs/repo" },
             "timeout": { "$ref": "#/$defs/duration" }
           }

@@ -38,6 +38,10 @@ var (
 	hostName = regexp.MustCompile(`^([a-z0-9]([a-z0-9-]*[a-z0-9])?\.)+[a-z]([a-z0-9-]*[a-z0-9])?$`)
 )
 
+// ValidHost reports whether h is a plain host name: lower case, with a dot, and no scheme, port,
+// wildcard or address. The firewall opens names, never ranges.
+func ValidHost(h string) bool { return hostName.MatchString(h) }
+
 // Validate refuses a spec the driver couldn't build exactly as described.
 func (s SandboxSpec) Validate() error {
 	var errs []error
@@ -62,7 +66,7 @@ func (s SandboxSpec) Validate() error {
 		errs = append(errs, fmt.Errorf("git dir %q is not inside %s", s.GitDir, filepath.Join(s.Parent, ".git", "modules")))
 	}
 	for _, h := range s.Egress {
-		if !hostName.MatchString(h) {
+		if !ValidHost(h) {
 			errs = append(errs, fmt.Errorf("egress %q is not a plain host name (no scheme, port, wildcard or address)", h))
 		}
 	}

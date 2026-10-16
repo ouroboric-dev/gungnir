@@ -4,16 +4,25 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+
+	"github.com/ouroboric-dev/gungnir"
 )
 
 // Pack is a realm's pack.yaml (spec §9.4).
 type Pack struct {
 	Name    string              `yaml:"name"`
 	Version string              `yaml:"version"`
-	Graph   string              `yaml:"graph"`  // relative to the pack
-	Roles   map[string]PackRole `yaml:"roles"`  // default roles; factory.yaml's roles are used from Phase 1
-	Checks  map[string][]string `yaml:"checks"` // check commands: merge and pointer nodes run them from Phase 2
-	Leaves  map[string]PackLeaf `yaml:"leaves"` // the leaves the graph works in, by path relative to the project
+	Graph   string              `yaml:"graph"`   // relative to the pack
+	Roles   map[string]PackRole `yaml:"roles"`   // default roles; factory.yaml's roles are used from Phase 1
+	Checks  map[string][]string `yaml:"checks"`  // check commands: merge and pointer nodes run them from Phase 2
+	Leaves  map[string]PackLeaf `yaml:"leaves"`  // the leaves the graph works in, by path relative to the project
+	Sandbox *PackSandbox        `yaml:"sandbox"` // the realm's stack layer and the hosts its commands reach (spec §6.1)
+}
+
+// PackSandbox is what a realm adds to its leaves' sandboxes.
+type PackSandbox struct {
+	Stack  string   `yaml:"stack"`  // the stack layer's image, pinned by digest
+	Egress []string `yaml:"egress"` // host names, such as package registries, opened on port 443 beside the model APIs
 }
 
 // PackLeaf is a leaf the realm creates when a project lacks it (spec §4.1).
@@ -43,6 +52,13 @@ func LoadPack(dir string) (*Pack, error) {
 	}
 	if !filepath.IsLocal(p.Graph) {
 		return nil, fmt.Errorf("%s: graph %q must be a path inside the realm", file, p.Graph)
+	}
+	if p.Sandbox != nil {
+		for _, h := range p.Sandbox.Egress {
+			if !gungnir.ValidHost(h) {
+				return nil, fmt.Errorf("%s: sandbox.egress %q is not a plain host name (no scheme, port, wildcard or address)", file, h)
+			}
+		}
 	}
 	for _, path := range sortedKeys(p.Leaves) {
 		l := p.Leaves[path]

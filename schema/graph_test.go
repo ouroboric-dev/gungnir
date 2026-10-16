@@ -170,3 +170,24 @@ func leaves(template, first string) string {
 	return "name: toy\nversion: 0.1.0\ngraph: graph.yaml\nleaves:\n  repos/app: { description: the toy app, template: " +
 		template + ", first_commit: [" + first + "] }\n"
 }
+
+func TestAgentNodesNameTheirSkills(t *testing.T) {
+	g, err := ParseGraph("graph.yaml", []byte(`
+name: s
+version: 1.0.0
+nodes:
+  - { id: spec, kind: agent, role: planner, prompt: p.md, skills: [google-dev-docs, asd-ste100] }
+`))
+	if err != nil || len(g.Nodes[0].Skills) != 2 || g.Nodes[0].Skills[1] != "asd-ste100" {
+		t.Fatalf("ParseGraph() = %+v, %v", g, err)
+	}
+	for name, node := range map[string]string{
+		"a skill twice":      "{ id: a, kind: agent, role: r, prompt: p.md, skills: [x-y, x-y] }",
+		"a skill with a dot": "{ id: a, kind: agent, role: r, prompt: p.md, skills: [../x] }",
+		"skills on an exec":  "{ id: a, kind: exec, run: [true], skills: [x] }",
+	} {
+		if _, err := ParseGraph("graph.yaml", []byte("name: s\nversion: 1.0.0\nnodes:\n  - "+node+"\n")); err == nil {
+			t.Errorf("%s: ParseGraph() = nil, want an error", name)
+		}
+	}
+}
