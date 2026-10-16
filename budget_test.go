@@ -22,3 +22,13 @@ func TestACapErrorSaysWhatWasReached(t *testing.T) {
 		t.Errorf("Error() = %q", got)
 	}
 }
+
+func TestAJournalThatCannotBeReadCountsAsAReachedCap(t *testing.T) {
+	e := &CapError{Scope: CapDay, Dimension: CapJournal, Note: "line 3 of 2026-10-16.jsonl is not JSON"}
+	got := e.Error()
+	for _, want := range []string{"per-day", "can't be checked", "counts as reached", "line 3"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("Error() = %q, want it to contain %q", got, want)
+		}
+	}
+}

@@ -17,6 +17,9 @@ const (
 	CapTokens CapDimension = "tokens"
 	CapTurns  CapDimension = "turns"
 	CapUSD    CapDimension = "usd"
+	// CapJournal is not a limit: the record of the day's spend can't be read, so the per-day cap
+	// can't be checked, and a cap that can't be checked is treated as reached.
+	CapJournal CapDimension = "journal"
 )
 
 // CapError is a budget cap that has been reached: the run stops at the hard approval point
@@ -26,9 +29,13 @@ type CapError struct {
 	Dimension CapDimension
 	Used      float64
 	Limit     float64
+	Note      string // CapJournal: why the record can't be read
 }
 
 func (e *CapError) Error() string {
+	if e.Dimension == CapJournal {
+		return fmt.Sprintf("the per-%s cap can't be checked, so it counts as reached: %s", e.Scope, e.Note)
+	}
 	if e.Dimension == CapUSD {
 		return fmt.Sprintf("the per-%s cap is reached: $%.4f spent of $%.4f", e.Scope, e.Used, e.Limit)
 	}
