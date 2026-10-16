@@ -17,7 +17,7 @@
                "node_finished", "node_failed", "check_result", "gate_pending", "gate_approved",
                "gate_rejected", "gate_auto_passed", "loop_attempt", "escalation", "routing_lookup",
                "budget_warning", "policy_violation", "pointer_moved", "mode_changed", "config_changed",
-               "repo_created"]
+               "repo_created", "sandbox_up", "sandbox_down"]
     },
     "ygg.attempt": { "type": "integer", "minimum": 1 },
     "gen_ai.agent.name": { "type": "string" },
