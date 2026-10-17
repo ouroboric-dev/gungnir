@@ -66,6 +66,7 @@
             "repo": { "$ref": "#/$defs/repo" },
             "timeout": { "$ref": "#/$defs/duration" },
             "scratch": { "type": "boolean" },
+            "reviews": { "$ref": "#/$defs/id" },
             "inputs": { "type": "array", "items": { "type": "string", "minLength": 1 } }
           }
         },
@@ -76,7 +77,8 @@
             "id": { "$ref": "#/$defs/id" },
             "kind": { "const": "gate" },
             "gate": { "$ref": "#/$defs/gate" },
-            "reruns": { "$ref": "#/$defs/id" }
+            "reruns": { "$ref": "#/$defs/id" },
+            "deviation_from": { "$ref": "#/$defs/id" }
           }
         },
         {
