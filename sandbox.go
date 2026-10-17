@@ -146,12 +146,14 @@ func ValidateServices(services []Service) error {
 			}
 			ports[p] = true
 		}
-		for k := range v.Env {
+		for k, val := range v.Env {
 			switch {
 			case k == "" || strings.ContainsAny(k, "=\x00"):
 				errs = append(errs, fmt.Errorf("service %s: env name %q is not a variable name", v.Name, k))
 			case secretName.MatchString(k):
 				errs = append(errs, fmt.Errorf("service %s: env %s names a credential; a service in a sandbox takes none (use the image's mode without a password)", v.Name, k))
+			case strings.Contains(val, "$"):
+				errs = append(errs, fmt.Errorf("service %s: env %s has a value with a '$'; compose would expand it from the operator's environment, so give the value literally", v.Name, k))
 			}
 		}
 	}

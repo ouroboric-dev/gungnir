@@ -2,6 +2,7 @@ package gungnir
 
 import (
 	"slices"
+	"strings"
 	"testing"
 )
 
@@ -19,19 +20,21 @@ func TestASandboxSpecMayCarryAStackAndServices(t *testing.T) {
 		t.Fatalf("Validate() = %v", err)
 	}
 	bad := map[string]func(*SandboxSpec){
-		"a stack with no digest":         func(s *SandboxSpec) { s.Stack = "docker.io/library/golang:1.26.7" },
-		"a service with no digest":       func(s *SandboxSpec) { s.Services[0].Image = "docker.io/library/postgres:17.2" },
-		"a service named work":           func(s *SandboxSpec) { s.Services[0].Name = "work" },
-		"a service named fw":             func(s *SandboxSpec) { s.Services[0].Name = "fw" },
-		"a service name in capitals":     func(s *SandboxSpec) { s.Services[0].Name = "Postgres" },
-		"a service twice":                func(s *SandboxSpec) { s.Services = append(s.Services, s.Services[0]) },
-		"a service with no port":         func(s *SandboxSpec) { s.Services[0].Ports = nil },
-		"a port out of range":            func(s *SandboxSpec) { s.Services[0].Ports = []int{70000} },
-		"a port twice":                   func(s *SandboxSpec) { s.Services[0].Ports = []int{5432, 5432} },
-		"an env name with an equals":     func(s *SandboxSpec) { s.Services[0].Env = map[string]string{"A=B": "c"} },
-		"an empty env name":              func(s *SandboxSpec) { s.Services[0].Env = map[string]string{"": "c"} },
-		"an env that names a credential": func(s *SandboxSpec) { s.Services[0].Env = map[string]string{"POSTGRES_PASSWORD": "dev"} },
-		"nine services":                  func(s *SandboxSpec) { s.Services = manyServices(9) },
+		"a stack with no digest":                         func(s *SandboxSpec) { s.Stack = "docker.io/library/golang:1.26.7" },
+		"a service with no digest":                       func(s *SandboxSpec) { s.Services[0].Image = "docker.io/library/postgres:17.2" },
+		"a service named work":                           func(s *SandboxSpec) { s.Services[0].Name = "work" },
+		"a service named fw":                             func(s *SandboxSpec) { s.Services[0].Name = "fw" },
+		"a service name in capitals":                     func(s *SandboxSpec) { s.Services[0].Name = "Postgres" },
+		"a service twice":                                func(s *SandboxSpec) { s.Services = append(s.Services, s.Services[0]) },
+		"a service with no port":                         func(s *SandboxSpec) { s.Services[0].Ports = nil },
+		"a port out of range":                            func(s *SandboxSpec) { s.Services[0].Ports = []int{70000} },
+		"a port twice":                                   func(s *SandboxSpec) { s.Services[0].Ports = []int{5432, 5432} },
+		"an env name with an equals":                     func(s *SandboxSpec) { s.Services[0].Env = map[string]string{"A=B": "c"} },
+		"an empty env name":                              func(s *SandboxSpec) { s.Services[0].Env = map[string]string{"": "c"} },
+		"an env that names a credential":                 func(s *SandboxSpec) { s.Services[0].Env = map[string]string{"POSTGRES_PASSWORD": "dev"} },
+		"an env value that expands from the environment": func(s *SandboxSpec) { s.Services[0].Env = map[string]string{"POSTGRES_DB": "${HOME}"} },
+		"an env value with a bare dollar variable":       func(s *SandboxSpec) { s.Services[0].Env = map[string]string{"POSTGRES_DB": "$HOME"} },
+		"nine services":                                  func(s *SandboxSpec) { s.Services = manyServices(9) },
 	}
 	for name, change := range bad {
 		s := specWithServices()
@@ -43,6 +46,21 @@ func TestASandboxSpecMayCarryAStackAndServices(t *testing.T) {
 	}
 	if err := func() error { s := specWithServices(); s.Services = manyServices(8); return s.Validate() }(); err != nil {
 		t.Errorf("eight services = %v", err)
+	}
+}
+
+func TestAServiceEnvValueWithADollarIsRefusedWithoutEchoingIt(t *testing.T) {
+	err := ValidateServices([]Service{{Name: "postgres", Image: pg, Env: map[string]string{"POSTGRES_DB": "pre-${SECRET_VALUE}"}, Ports: []int{5432}}})
+	if err == nil {
+		t.Fatal("ValidateServices() = nil, want an error")
+	}
+	for _, want := range []string{"postgres", "POSTGRES_DB"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("error %q does not name %q", err, want)
+		}
+	}
+	if strings.Contains(err.Error(), "SECRET_VALUE") {
+		t.Errorf("error %q echoes the value", err)
 	}
 }
 
