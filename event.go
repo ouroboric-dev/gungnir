@@ -38,6 +38,14 @@ const (
 	EventFindingRaised   EventName = "finding_raised"   // a check or reviewer reported a finding (spec §4.6)
 	EventFindingClosed   EventName = "finding_closed"   // its source confirmed the fix, with proof
 	EventFindingReopened EventName = "finding_reopened" // a closed finding was reported again
+
+	EventRealmLoaded   EventName = "realm_loaded"   // a realm leaf was loaded at the version the project pins (change realm-leaf-naming)
+	EventDocsPublished EventName = "docs_published" // Odin copied a scratch agent's documents into the project and committed them
+	EventTasksReady    EventName = "tasks_ready"    // a plan's tasks passed the Definition of Ready and features.json was written
+	EventNodeReturned  EventName = "node_returned"  // a refusal went back into an earlier node, as its input (spec §4.5)
+	EventTaskStarted   EventName = "task_started"   // the first node of a task's shape began
+	EventTaskDone      EventName = "task_done"      // the last node of a task's shape finished
+	EventTaskBlocked   EventName = "task_blocked"   // an unattended run gave a task up and went on with the rest (spec §7.3)
 )
 
 // Events returns every event name, in the order above.
@@ -47,7 +55,9 @@ func Events() []EventName {
 		EventGateApproved, EventGateRejected, EventGateAutoPassed, EventLoopAttempt, EventEscalation,
 		EventRoutingLookup, EventBudgetWarning, EventPolicyViolation, EventPointerMoved,
 		EventModeChanged, EventConfigChanged, EventRepoCreated, EventSandboxUp, EventSandboxDown,
-		EventRetry, EventRunPaused, EventFindingRaised, EventFindingClosed, EventFindingReopened}
+		EventRetry, EventRunPaused, EventFindingRaised, EventFindingClosed, EventFindingReopened,
+		EventRealmLoaded, EventDocsPublished, EventTasksReady, EventNodeReturned, EventTaskStarted, EventTaskDone,
+		EventTaskBlocked}
 }
 
 // Event is one ledger line. Fields follow OpenTelemetry's GenAI attribute names (gen_ai.*) where
@@ -87,8 +97,12 @@ type Event struct {
 	FindingID       string `json:"ygg.finding.id,omitempty"`
 	FindingSource   string `json:"ygg.finding.source,omitempty"`
 	FindingSeverity string `json:"ygg.finding.severity,omitempty"`
-	FindingAttempts int    `json:"ygg.finding.attempts,omitempty"` // finding_closed: the loop attempts the finding took to close
-	FindingReopens  int    `json:"ygg.finding.reopens,omitempty"`  // finding_closed, finding_reopened: how often it came back
+	Realm           string `json:"ygg.realm.name,omitempty"`    // realm_loaded, repo_created: the realm leaf
+	RealmVersion    string `json:"ygg.realm.version,omitempty"` // and the version it was loaded at
+	Task            string `json:"ygg.task.id,omitempty"`       // the task a node works for, on every line of its shape
+
+	FindingAttempts int `json:"ygg.finding.attempts,omitempty"` // finding_closed: the loop attempts the finding took to close
+	FindingReopens  int `json:"ygg.finding.reopens,omitempty"`  // finding_closed, finding_reopened: how often it came back
 
 	Prev string `json:"prev"` // hex SHA-256 of the previous line; 64 zeros on the first line
 }

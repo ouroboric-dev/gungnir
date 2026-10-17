@@ -18,7 +18,8 @@
                "gate_rejected", "gate_auto_passed", "loop_attempt", "escalation", "routing_lookup",
                "budget_warning", "policy_violation", "pointer_moved", "mode_changed", "config_changed",
                "repo_created", "sandbox_up", "sandbox_down", "retry", "run_paused", "finding_raised",
-               "finding_closed", "finding_reopened"]
+               "finding_closed", "finding_reopened", "realm_loaded", "docs_published", "tasks_ready",
+               "node_returned", "task_started", "task_done", "task_blocked"]
     },
     "ygg.attempt": { "type": "integer", "minimum": 1 },
     "gen_ai.agent.name": { "type": "string" },
@@ -41,6 +42,9 @@
     "ygg.config.sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
     "ygg.ref.commit": { "type": "string", "pattern": "^[0-9a-f]{40,64}$" },
     "ygg.ref.gate_file": { "type": "string" },
+    "ygg.realm.name": { "type": "string", "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$" },
+    "ygg.realm.version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" },
+    "ygg.task.id": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
     "ygg.finding.id": { "type": "string", "minLength": 1 },
     "ygg.finding.source": { "type": "string", "minLength": 1 },
     "ygg.finding.severity": { "enum": ["blocker", "major", "minor"] },

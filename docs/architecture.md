@@ -16,6 +16,18 @@ The contract: Go interface types and JSON schemas for ledger events, `graph.yaml
   `Tracker` (spec §2.2).
 - Defines the schemas: `factory.yaml`, `graph.yaml`, `pack.yaml`, ledger events (with OpenTelemetry
   `gen_ai.*` field names) and findings.
+- Defines what a realm and a project say about each other (change realm-leaf-naming): a project's
+  `umbrella.yaml` pins its lead realm and, for each leaf, the realm that provides it and the leaves it
+  consumes; a build realm's `pack.yaml` offers a leaf recipe (template, implementer prompt, checks) and
+  sandbox services under the same names in every realm, and may have no graph; `leaves.yaml` is the
+  spec stage's list of a product's leaves and their realms.
+- Defines the graph's nodes beyond the loop: `foreach` (a task shape repeated for every ready task, in the
+  leaf and the realm of the task), scratch agents, `publish`, `tasks` and `init`, and `back_to` for a
+  refusal that goes back into an earlier node.
+- Reads a plan's `tasks.md` exactly into `Feature`s, applies the Definition of Ready (`CheckReady`),
+  and defines `features.json`, which Odin alone writes.
+- Describes a sandbox (`SandboxSpec`): the leaf or scratch folder it holds, the stack layer of the
+  leaf's realm, and the services it starts beside the work container.
 - Validates configs against those schemas.
 - Takes every interface change first: one PR here, plus one in each affected component (spec §1).
 

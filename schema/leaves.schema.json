@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/ouroboric-dev/gungnir/schema/leaves.schema.json",
+  "title": "leaves.yaml",
+  "description": "The leaves a product has and the realm that provides each one. The spec stage writes it, the operator approves it at the spec gate, and the init node creates each missing leaf from its realm's template (change realm-leaf-naming).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["leaves"],
+  "properties": {
+    "leaves": {
+      "type": "object",
+      "minProperties": 1,
+      "maxProperties": 20,
+      "propertyNames": { "pattern": "^[a-z0-9][a-z0-9._-]*(/[a-z0-9][a-z0-9._-]*)*$" },
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["realm", "realm_version", "description"],
+        "properties": {
+          "realm": { "type": "string", "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$" },
+          "realm_version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" },
+          "description": { "type": "string", "pattern": "^[^\\n\\r]{1,200}$" },
+          "consumes": { "type": "array", "items": { "type": "string", "minLength": 1 } }
+        }
+      }
+    }
+  }
+}

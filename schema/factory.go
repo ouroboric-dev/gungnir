@@ -19,6 +19,14 @@ type Factory struct {
 	Privacy string                  `yaml:"privacy"`
 	Sandbox *Sandbox                `yaml:"sandbox"` // required when a role runs a real agent (spec §6)
 	Skills  Skills                  `yaml:"skills"`
+	Realms  *Realms                 `yaml:"realms"` // where the realm leaves are, so --realm can name one
+}
+
+// Realms says where the operator keeps the realm leaves: a folder with one checkout of each, such as
+// the yggdrasil umbrella (<dir>/midgard-react/pack.yaml). A project pins the version it needs, and a
+// run uses the checkout only if it is at that version (change realm-leaf-naming).
+type Realms struct {
+	Dir string `yaml:"dir"`
 }
 
 // Sandbox says where the container engine is and how it sees the host's files (spec §6; sandbox
@@ -228,6 +236,9 @@ func (f *Factory) checkSandbox() error {
 	}
 	if f.Skills.PrivateDir != "" && !filepath.IsAbs(f.Skills.PrivateDir) {
 		return fmt.Errorf("skills.private_dir %q must be an absolute path", f.Skills.PrivateDir)
+	}
+	if r := f.Realms; r != nil && (!filepath.IsAbs(r.Dir) || filepath.Clean(r.Dir) != r.Dir || r.Dir == "/") {
+		return fmt.Errorf("realms.dir %q must be a clean, absolute path, and not the root", r.Dir)
 	}
 	if f.Sandbox == nil {
 		for _, r := range sortedKeys(f.Roles) {

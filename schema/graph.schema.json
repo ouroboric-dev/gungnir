@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/ouroboric-dev/gungnir/schema/graph.schema.json",
   "title": "graph.yaml",
-  "description": "A realm's graph: nodes run in order; a gate node is an approval point (spec §4.2, §7). Exec and agent nodes work in a repo of the project, merge nodes land a leaf's run branch through the merge gate (§4.5), pointer nodes move a leaf's pointer one level (§3.4), loop nodes run an implementer against a check ladder and reviewers, with a bounded number of attempts (§4.2, §4.6, §7.3).",
+  "description": "A realm's graph: nodes run in order; a foreach node repeats its body for every ready task, in the leaf the task names, and the body's loop, merge and pointer nodes take their prompt and checks from the realm of that leaf (change realm-leaf-naming); a gate node is an approval point (spec §4.2, §7). Exec and agent nodes work in a repo of the project, merge nodes land a leaf's run branch through the merge gate (§4.5), pointer nodes move a leaf's pointer one level (§3.4), loop nodes run an implementer against a check ladder and reviewers, with a bounded number of attempts (§4.2, §4.6, §7.3).",
   "type": "object",
   "additionalProperties": false,
   "required": ["name", "version", "nodes"],
@@ -17,6 +17,12 @@
     "duration": { "type": "string", "pattern": "^[1-9][0-9]*(ms|s|m|h)$" },
     "repo": { "type": "string", "pattern": "^(\\.|[a-z0-9][a-z0-9._-]*(/[a-z0-9][a-z0-9._-]*)*)$" },
     "names": { "type": "array", "items": { "$ref": "#/$defs/id" } },
+    "gate": {
+      "enum": ["design", "spec", "plan", "feature", "merge", "pointer", "pointer-contract", "escalation",
+               "deploy-prod", "store-submit", "real-secrets-or-user-data", "budget-cap",
+               "external-input", "policy-violation", "shrink-guard", "guardrail-change",
+               "repo-admin"]
+    },
     "reviewer": {
       "type": "object",
       "additionalProperties": false,
@@ -33,7 +39,7 @@
     "node": {
       "type": "object",
       "required": ["id", "kind"],
-      "properties": { "kind": { "enum": ["exec", "agent", "gate", "merge", "pointer", "loop"] } },
+      "properties": { "kind": { "enum": ["exec", "agent", "gate", "merge", "pointer", "loop", "foreach", "publish", "tasks", "init"] } },
       "oneOf": [
         {
           "additionalProperties": false,
@@ -58,7 +64,9 @@
             "max_turns": { "type": "integer", "minimum": 1 },
             "skills": { "$ref": "#/$defs/names", "uniqueItems": true },
             "repo": { "$ref": "#/$defs/repo" },
-            "timeout": { "$ref": "#/$defs/duration" }
+            "timeout": { "$ref": "#/$defs/duration" },
+            "scratch": { "type": "boolean" },
+            "inputs": { "type": "array", "items": { "type": "string", "minLength": 1 } }
           }
         },
         {
@@ -67,12 +75,7 @@
           "properties": {
             "id": { "$ref": "#/$defs/id" },
             "kind": { "const": "gate" },
-            "gate": {
-              "enum": ["design", "spec", "plan", "feature", "merge", "pointer", "pointer-contract", "escalation",
-                       "deploy-prod", "store-submit", "real-secrets-or-user-data", "budget-cap",
-                       "external-input", "policy-violation", "shrink-guard", "guardrail-change",
-                       "repo-admin"]
-            },
+            "gate": { "$ref": "#/$defs/gate" },
             "reruns": { "$ref": "#/$defs/id" }
           }
         },
@@ -84,8 +87,11 @@
             "kind": { "const": "merge" },
             "repo": { "$ref": "#/$defs/repo" },
             "checks": { "$ref": "#/$defs/names", "minItems": 1 },
-            "timeout": { "$ref": "#/$defs/duration" }
-          }
+            "timeout": { "$ref": "#/$defs/duration" },
+            "back_to": { "$ref": "#/$defs/id" },
+            "returns": { "type": "integer", "minimum": 1, "maximum": 5 }
+          },
+          "dependentRequired": { "returns": ["back_to"] }
         },
         {
           "additionalProperties": false,
@@ -97,8 +103,11 @@
             "checks": { "$ref": "#/$defs/names" },
             "acceptance": { "$ref": "#/$defs/names" },
             "generated": { "type": "array", "items": { "type": "string", "minLength": 1 } },
-            "timeout": { "$ref": "#/$defs/duration" }
-          }
+            "timeout": { "$ref": "#/$defs/duration" },
+            "back_to": { "$ref": "#/$defs/id" },
+            "returns": { "type": "integer", "minimum": 1, "maximum": 5 }
+          },
+          "dependentRequired": { "returns": ["back_to"] }
         },
         {
           "additionalProperties": false,
@@ -115,6 +124,132 @@
             "timeout": { "$ref": "#/$defs/duration" },
             "attempts": { "type": "integer", "minimum": 1, "maximum": 10 },
             "checks": { "$ref": "#/$defs/names", "minItems": 1, "uniqueItems": true },
+            "reviewers": { "type": "array", "minItems": 1, "maxItems": 5, "items": { "$ref": "#/$defs/reviewer" } }
+          }
+        },
+        {
+          "additionalProperties": false,
+          "required": ["from", "to"],
+          "properties": {
+            "id": { "$ref": "#/$defs/id" },
+            "kind": { "const": "publish" },
+            "from": { "$ref": "#/$defs/id" },
+            "to": { "type": "string", "minLength": 1 }
+          }
+        },
+        {
+          "additionalProperties": false,
+          "required": ["from"],
+          "properties": {
+            "id": { "$ref": "#/$defs/id" },
+            "kind": { "const": "init" },
+            "from": { "type": "string", "minLength": 1 }
+          }
+        },
+        {
+          "additionalProperties": false,
+          "required": ["from"],
+          "properties": {
+            "id": { "$ref": "#/$defs/id" },
+            "kind": { "const": "tasks" },
+            "from": { "type": "string", "minLength": 1 },
+            "leaves": { "type": "string", "minLength": 1 },
+            "back_to": { "$ref": "#/$defs/id" },
+            "returns": { "type": "integer", "minimum": 1, "maximum": 5 }
+          },
+          "dependentRequired": { "returns": ["back_to"] }
+        },
+        {
+          "additionalProperties": false,
+          "required": ["over", "nodes"],
+          "properties": {
+            "id": { "$ref": "#/$defs/id" },
+            "kind": { "const": "foreach" },
+            "over": { "const": "tasks" },
+            "nodes": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/bodyNode" } }
+          }
+        }
+      ]
+    },
+    "bodyNode": {
+      "type": "object",
+      "required": ["id", "kind"],
+      "properties": { "kind": { "enum": ["exec", "agent", "gate", "merge", "pointer", "loop"] } },
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "required": ["run"],
+          "properties": {
+            "id": { "$ref": "#/$defs/id" },
+            "kind": { "const": "exec" },
+            "run": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
+            "timeout": { "$ref": "#/$defs/duration" }
+          }
+        },
+        {
+          "additionalProperties": false,
+          "required": ["role", "prompt"],
+          "properties": {
+            "id": { "$ref": "#/$defs/id" },
+            "kind": { "const": "agent" },
+            "role": { "$ref": "#/$defs/id" },
+            "prompt": { "type": "string", "minLength": 1 },
+            "read_only": { "type": "boolean" },
+            "max_turns": { "type": "integer", "minimum": 1 },
+            "skills": { "$ref": "#/$defs/names", "uniqueItems": true },
+            "timeout": { "$ref": "#/$defs/duration" }
+          }
+        },
+        {
+          "additionalProperties": false,
+          "required": ["gate"],
+          "properties": {
+            "id": { "$ref": "#/$defs/id" },
+            "kind": { "const": "gate" },
+            "gate": { "$ref": "#/$defs/gate" },
+            "reruns": { "$ref": "#/$defs/id" }
+          }
+        },
+        {
+          "additionalProperties": false,
+          "required": ["realm"],
+          "properties": {
+            "id": { "$ref": "#/$defs/id" },
+            "kind": { "const": "merge" },
+            "realm": { "const": "leaf" },
+            "timeout": { "$ref": "#/$defs/duration" },
+            "back_to": { "$ref": "#/$defs/id" },
+            "returns": { "type": "integer", "minimum": 1, "maximum": 5 }
+          },
+          "dependentRequired": { "returns": ["back_to"] }
+        },
+        {
+          "additionalProperties": false,
+          "required": ["realm"],
+          "properties": {
+            "id": { "$ref": "#/$defs/id" },
+            "kind": { "const": "pointer" },
+            "realm": { "const": "leaf" },
+            "acceptance": { "$ref": "#/$defs/names" },
+            "generated": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+            "timeout": { "$ref": "#/$defs/duration" },
+            "back_to": { "$ref": "#/$defs/id" },
+            "returns": { "type": "integer", "minimum": 1, "maximum": 5 }
+          },
+          "dependentRequired": { "returns": ["back_to"] }
+        },
+        {
+          "additionalProperties": false,
+          "required": ["realm", "role"],
+          "properties": {
+            "id": { "$ref": "#/$defs/id" },
+            "kind": { "const": "loop" },
+            "realm": { "const": "leaf" },
+            "role": { "$ref": "#/$defs/id" },
+            "skills": { "$ref": "#/$defs/names", "uniqueItems": true },
+            "max_turns": { "type": "integer", "minimum": 1 },
+            "timeout": { "$ref": "#/$defs/duration" },
+            "attempts": { "type": "integer", "minimum": 1, "maximum": 10 },
             "reviewers": { "type": "array", "minItems": 1, "maxItems": 5, "items": { "$ref": "#/$defs/reviewer" } }
           }
         }
