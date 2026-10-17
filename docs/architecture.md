@@ -27,7 +27,13 @@ The contract: Go interface types and JSON schemas for ledger events, `graph.yaml
 - Reads a plan's `tasks.md` exactly into `Feature`s, applies the Definition of Ready (`CheckReady`),
   and defines `features.json`, which Odin alone writes.
 - Describes a sandbox (`SandboxSpec`): the leaf or scratch folder it holds, the stack layer of the
-  leaf's realm, and the services it starts beside the work container.
+  leaf's realm, and the services it starts beside the work container (each with an optional command, for
+  an image that does nothing without one).
+- Says what a realm's stack is (change realm-content): an image pinned by digest, or a build context in
+  the realm, whose files (and the stage built, its `target`) are hashed into the local tag of the image `ygg sandbox build` builds from it.
+  A realm may name a second stack for the acceptance checks that run on a snapshot of the whole project.
+- Defines the design-conformance review (spec §4.2): a scratch reviewer (`reviews`) reads another scratch
+  agent's output, its verdict (`Conformance`) is read exactly, and the spec gate reads it (`deviation_from`).
 - Validates configs against those schemas.
 - Takes every interface change first: one PR here, plus one in each affected component (spec §1).
 
