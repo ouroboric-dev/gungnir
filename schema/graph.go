@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/ouroboric-dev/gungnir"
@@ -29,6 +30,9 @@ const (
 	KindPointer NodeKind = "pointer" // moves a leaf's pointer in its parent umbrella, one level
 	KindLoop    NodeKind = "loop"    // implement, check and fix with a bounded number of attempts (spec §4.2, §4.6, §7.3)
 	KindForeach NodeKind = "foreach" // repeats its body for every ready task of the plan, in the leaf the task names (spec §4.2)
+	KindPublish NodeKind = "publish" // Odin copies a scratch agent's output into the project and commits it (spec §3.3 rule 1)
+	KindTasks   NodeKind = "tasks"   // Odin reads the plan's tasks.md, checks every task is ready, and writes features.json (spec §4.2)
+	KindInit    NodeKind = "init"    // Odin creates the leaves the spec names, each from its realm's template (spec §4.2, §4.1)
 )
 
 // RealmFrom says whose files a node uses: the lead realm's (the default) or the realm of the task's leaf.
@@ -60,6 +64,11 @@ type Node struct {
 	Reviewers  []Reviewer `yaml:"reviewers"`  // loop: read-only agents that review each attempt once its checks pass, in order
 	Acceptance []string   `yaml:"acceptance"` // pointer: pack checks run in the leaf's parent umbrella
 	Generated  []string   `yaml:"generated"`  // pointer: generated files of the parent umbrella, committed with the move under the shrink guard
+
+	Scratch bool     `yaml:"scratch"` // agent: runs in a scratch workspace, not a leaf, and writes its documents to out/ (spec §3.3 rule 1)
+	Inputs  []string `yaml:"inputs"`  // agent (scratch): files and folders of the project, copied into the workspace; changes to the copies are ignored
+	From    string   `yaml:"from"`    // publish: the scratch agent whose output is published; tasks: the tasks.md, by glob; init: the leaves file
+	To      string   `yaml:"to"`      // publish: the folder of the project its files go to
 
 	Over      string `yaml:"over"`  // foreach: what it repeats for; only "tasks"
 	Body      []Node `yaml:"nodes"` // foreach: the nodes that run for each task, in the task's leaf
@@ -186,6 +195,9 @@ func (c *graphCheck) scope(nodes []Node, body bool) error {
 				return fmt.Errorf("%s: node %s: generated file %q must be a path inside the umbrella", file, n.ID, f)
 			}
 		}
+		if err := c.stage(n, nodes[:i]); err != nil {
+			return err
+		}
 		if n.Kind == KindForeach {
 			if err := c.scope(n.Body, true); err != nil {
 				return err
@@ -211,6 +223,55 @@ func (c *graphCheck) scope(nodes []Node, body bool) error {
 		}
 	}
 	return nil
+}
+
+// stage checks the nodes that work on documents and the project, not on a leaf: a scratch agent, and
+// publish, tasks and init. before holds the nodes of the scope ahead of n.
+func (c *graphCheck) stage(n *Node, before []Node) error {
+	file := c.file
+	switch n.Kind {
+	case KindAgent:
+		switch {
+		case n.Scratch && n.Repo != "":
+			return fmt.Errorf("%s: node %s: a scratch agent names no repo; it works in a workspace of its own", file, n.ID)
+		case n.Scratch && n.ReadOnly:
+			return fmt.Errorf("%s: node %s: a scratch agent writes its output to out/, so it can't be read-only", file, n.ID)
+		case !n.Scratch && len(n.Inputs) > 0:
+			return fmt.Errorf("%s: node %s: only a scratch agent takes inputs", file, n.ID)
+		}
+		seen := map[string]bool{}
+		for _, in := range n.Inputs {
+			if !projectPath(in) {
+				return fmt.Errorf("%s: node %s: input %q must be a path inside the project, outside .git and .factory", file, n.ID, in)
+			}
+			if seen[in] {
+				return fmt.Errorf("%s: node %s: input %q is listed twice", file, n.ID, in)
+			}
+			seen[in] = true
+		}
+	case KindPublish:
+		if !slices.ContainsFunc(before, func(m Node) bool { return m.ID == n.From && m.Kind == KindAgent && m.Scratch }) {
+			return fmt.Errorf("%s: node %s publishes the output of %q, which must be a scratch agent node before it", file, n.ID, n.From)
+		}
+		if n.To == "." || !projectPath(n.To) {
+			return fmt.Errorf("%s: node %s: to %q must be a folder of the project (not the project itself, .git or .factory)", file, n.ID, n.To)
+		}
+	case KindTasks, KindInit:
+		if !projectPath(n.From) {
+			return fmt.Errorf("%s: node %s: from %q must be a path inside the project, outside .git and .factory", file, n.ID, n.From)
+		}
+	}
+	return nil
+}
+
+// projectPath reports whether p is a path inside a project that a run may read or write: relative,
+// without ".." and not inside .git or .factory, which are Odin's.
+func projectPath(p string) bool {
+	if !filepath.IsLocal(p) {
+		return false
+	}
+	first, _, _ := strings.Cut(filepath.ToSlash(filepath.Clean(p)), "/")
+	return first != ".git" && first != ".factory"
 }
 
 // checkLoop checks a loop node's attempts and reviewers, and records its reviewers' session keys.

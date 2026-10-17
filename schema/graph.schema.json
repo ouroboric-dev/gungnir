@@ -39,7 +39,7 @@
     "node": {
       "type": "object",
       "required": ["id", "kind"],
-      "properties": { "kind": { "enum": ["exec", "agent", "gate", "merge", "pointer", "loop", "foreach"] } },
+      "properties": { "kind": { "enum": ["exec", "agent", "gate", "merge", "pointer", "loop", "foreach", "publish", "tasks", "init"] } },
       "oneOf": [
         {
           "additionalProperties": false,
@@ -64,7 +64,9 @@
             "max_turns": { "type": "integer", "minimum": 1 },
             "skills": { "$ref": "#/$defs/names", "uniqueItems": true },
             "repo": { "$ref": "#/$defs/repo" },
-            "timeout": { "$ref": "#/$defs/duration" }
+            "timeout": { "$ref": "#/$defs/duration" },
+            "scratch": { "type": "boolean" },
+            "inputs": { "type": "array", "items": { "type": "string", "minLength": 1 } }
           }
         },
         {
@@ -117,6 +119,25 @@
             "attempts": { "type": "integer", "minimum": 1, "maximum": 10 },
             "checks": { "$ref": "#/$defs/names", "minItems": 1, "uniqueItems": true },
             "reviewers": { "type": "array", "minItems": 1, "maxItems": 5, "items": { "$ref": "#/$defs/reviewer" } }
+          }
+        },
+        {
+          "additionalProperties": false,
+          "required": ["from", "to"],
+          "properties": {
+            "id": { "$ref": "#/$defs/id" },
+            "kind": { "const": "publish" },
+            "from": { "$ref": "#/$defs/id" },
+            "to": { "type": "string", "minLength": 1 }
+          }
+        },
+        {
+          "additionalProperties": false,
+          "required": ["from"],
+          "properties": {
+            "id": { "$ref": "#/$defs/id" },
+            "kind": { "enum": ["tasks", "init"] },
+            "from": { "type": "string", "minLength": 1 }
           }
         },
         {
