@@ -29,9 +29,40 @@ type SandboxSpec struct {
 	Name   string   // the leaf's path from the project, such as "repos/app"
 	Parent string   // the leaf's parent umbrella: the sandbox mirrors its layout
 	Leaf   string   // the leaf's working copy: mounted read-write
-	GitDir string   // the leaf's git dir, inside Parent/.git/modules: mounted read-only
+	GitDir string   // the leaf's git dir, inside Parent/.git/modules: mounted read-only; empty for a scratch folder
 	Egress []string // host names the firewall opens on port 443, besides DNS
+	// Stack is the image of the stack layer of the realm that provides this leaf, pinned by digest.
+	// Empty means the driver's own images. A run with several realms starts leaves with different
+	// stacks.
+	Stack string
+	// Services are the containers the leaf's sandbox starts beside the work container, such as a
+	// database: the services of the leaf's realm, and of each leaf it consumes (spec §6.1).
+	Services []Service
+	// Scratch makes the sandbox hold one plain folder, not a leaf: a planner's workspace (spec §3.3).
+	// It has no git dir.
+	Scratch bool
 }
+
+// Service is a container that runs beside the work container.
+type Service struct {
+	Name  string            // the compose service name, and the host name the work container reaches it by
+	Image string            // pinned by digest
+	Env   map[string]string // the service's environment: made-up development values, never a secret
+	Ports []int             // the TCP ports the work container may reach; the firewall opens these and no others
+}
+
+// MaxServices is how many services one sandbox may start.
+const MaxServices = 8
+
+var (
+	image       = regexp.MustCompile(`^[a-z0-9][a-z0-9./_-]*(:[A-Za-z0-9._-]+)?@sha256:[0-9a-f]{64}$`)
+	serviceName = regexp.MustCompile(`^[a-z][a-z0-9-]*$`)
+	secretName  = regexp.MustCompile(`(?i)(API_?KEY|TOKEN|SECRET|PASSWORD|CREDENTIAL)`)
+)
+
+// ValidImage reports whether ref is an image reference pinned by digest: a pull can only ever give the
+// image that was reviewed.
+func ValidImage(ref string) bool { return image.MatchString(ref) }
 
 var (
 	runID    = regexp.MustCompile(`^[a-z0-9][a-z0-9-]*$`)
@@ -51,7 +82,14 @@ func (s SandboxSpec) Validate() error {
 	if !filepath.IsLocal(s.Name) {
 		errs = append(errs, fmt.Errorf("name %q must be a path inside the project", s.Name))
 	}
-	for what, p := range map[string]string{"parent": s.Parent, "leaf": s.Leaf, "git dir": s.GitDir} {
+	paths := map[string]string{"parent": s.Parent, "leaf": s.Leaf}
+	switch {
+	case s.Scratch && s.GitDir != "":
+		errs = append(errs, fmt.Errorf("a scratch sandbox holds no git dir, but %q is given", s.GitDir))
+	case !s.Scratch:
+		paths["git dir"] = s.GitDir
+	}
+	for what, p := range paths {
 		if !filepath.IsAbs(p) {
 			errs = append(errs, fmt.Errorf("%s %q must be an absolute path", what, p))
 		}
@@ -62,15 +100,62 @@ func (s SandboxSpec) Validate() error {
 	if rel, err := filepath.Rel(s.Parent, s.Leaf); err != nil || !filepath.IsLocal(rel) {
 		errs = append(errs, fmt.Errorf("leaf %q is not inside the parent umbrella %q", s.Leaf, s.Parent))
 	}
-	if rel, err := filepath.Rel(filepath.Join(s.Parent, ".git", "modules"), s.GitDir); err != nil || !filepath.IsLocal(rel) {
-		errs = append(errs, fmt.Errorf("git dir %q is not inside %s", s.GitDir, filepath.Join(s.Parent, ".git", "modules")))
+	if !s.Scratch {
+		if rel, err := filepath.Rel(filepath.Join(s.Parent, ".git", "modules"), s.GitDir); err != nil || !filepath.IsLocal(rel) {
+			errs = append(errs, fmt.Errorf("git dir %q is not inside %s", s.GitDir, filepath.Join(s.Parent, ".git", "modules")))
+		}
 	}
 	for _, h := range s.Egress {
 		if !ValidHost(h) {
 			errs = append(errs, fmt.Errorf("egress %q is not a plain host name (no scheme, port, wildcard or address)", h))
 		}
 	}
-	return errors.Join(errs...)
+	if s.Stack != "" && !ValidImage(s.Stack) {
+		errs = append(errs, fmt.Errorf("stack %q is not an image pinned by digest", s.Stack))
+	}
+	return errors.Join(append(errs, s.checkServices()...)...)
+}
+
+// checkServices refuses services the driver could not start exactly as described.
+func (s SandboxSpec) checkServices() []error {
+	var errs []error
+	if len(s.Services) > MaxServices {
+		errs = append(errs, fmt.Errorf("%d services; a sandbox starts at most %d", len(s.Services), MaxServices))
+	}
+	seen := map[string]bool{}
+	for _, v := range s.Services {
+		switch {
+		case !serviceName.MatchString(v.Name):
+			errs = append(errs, fmt.Errorf("service name %q must be lower case words joined by dashes", v.Name))
+		case v.Name == "work" || v.Name == "fw":
+			errs = append(errs, fmt.Errorf("service name %q is taken by the sandbox's own containers", v.Name))
+		case seen[v.Name]:
+			errs = append(errs, fmt.Errorf("service %s is listed twice", v.Name))
+		}
+		seen[v.Name] = true
+		if !ValidImage(v.Image) {
+			errs = append(errs, fmt.Errorf("service %s: image %q is not pinned by digest", v.Name, v.Image))
+		}
+		if len(v.Ports) == 0 {
+			errs = append(errs, fmt.Errorf("service %s names no port, so the work container could not reach it", v.Name))
+		}
+		ports := map[int]bool{}
+		for _, p := range v.Ports {
+			if p < 1 || p > 65535 || ports[p] {
+				errs = append(errs, fmt.Errorf("service %s: port %d is out of range or listed twice", v.Name, p))
+			}
+			ports[p] = true
+		}
+		for k := range v.Env {
+			switch {
+			case k == "" || strings.ContainsAny(k, "=\x00"):
+				errs = append(errs, fmt.Errorf("service %s: env name %q is not a variable name", v.Name, k))
+			case secretName.MatchString(k):
+				errs = append(errs, fmt.Errorf("service %s: env %s names a credential; a service in a sandbox takes none (use the image's mode without a password)", v.Name, k))
+			}
+		}
+	}
+	return errs
 }
 
 // Layout holds where the sandbox mounts the leaf and its git dir, relative to the sandbox's root:
@@ -80,6 +165,9 @@ type Layout struct{ Leaf, GitDir string }
 // Layout returns the mirrored layout of a valid spec.
 func (s SandboxSpec) Layout() Layout {
 	leaf, _ := filepath.Rel(s.Parent, s.Leaf)
+	if s.Scratch {
+		return Layout{Leaf: filepath.ToSlash(leaf)}
+	}
 	git, _ := filepath.Rel(s.Parent, s.GitDir)
 	return Layout{Leaf: filepath.ToSlash(leaf), GitDir: filepath.ToSlash(git)}
 }
