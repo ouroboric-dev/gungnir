@@ -54,10 +54,16 @@ func (p *Pack) ServiceList() []gungnir.Service {
 	return out
 }
 
-// PackSandbox is what a realm adds to its leaves' sandboxes.
+// PackSandbox is what a realm adds to its leaves' sandboxes: its stack layer, in one of two forms (a
+// digest-pinned image, or a build context in the realm), and the hosts its commands reach.
 type PackSandbox struct {
 	Stack  string   `yaml:"stack"`  // the stack layer's image, pinned by digest
+	Build  string   `yaml:"build"`  // or the folder of the realm that holds the stack's Containerfile and the check scripts it bakes in
+	Target string   `yaml:"target"` // with build: the stage of the Containerfile this stack is; empty is its last stage
 	Egress []string `yaml:"egress"` // host names, such as package registries, opened on port 443 beside the model APIs
+	// Acceptance is the stack of the sandbox that holds a snapshot of the whole project, where a pointer
+	// move's acceptance checks run: a lead realm's, in either form. It is empty for a realm that has none.
+	Acceptance *PackStack `yaml:"acceptance"`
 }
 
 // PackLeaf is a leaf the realm creates when a project lacks it (spec §4.1).
@@ -132,6 +138,20 @@ func LoadPack(dir string) (*Pack, error) {
 		return nil, err
 	}
 	if p.Sandbox != nil {
+		for _, st := range []PackStack{{Stack: p.Sandbox.Stack, Build: p.Sandbox.Build, Target: p.Sandbox.Target}, ptrOr(p.Sandbox.Acceptance)} {
+			if st.Build != "" && !filepath.IsLocal(st.Build) {
+				return nil, fmt.Errorf("%s: sandbox build %q must be a folder inside the realm", file, st.Build)
+			}
+			if st.Target != "" && st.Build == "" {
+				return nil, fmt.Errorf("%s: sandbox target %q needs a build context; an image has no stages", file, st.Target)
+			}
+		}
+		if _, err := p.StackRef(dir); err != nil {
+			return nil, fmt.Errorf("%s: sandbox: %w", file, err)
+		}
+		if _, err := p.AcceptanceRef(dir); err != nil {
+			return nil, fmt.Errorf("%s: sandbox acceptance: %w", file, err)
+		}
 		for _, h := range p.Sandbox.Egress {
 			if !gungnir.ValidHost(h) {
 				return nil, fmt.Errorf("%s: sandbox.egress %q is not a plain host name (no scheme, port, wildcard or address)", file, h)
@@ -154,4 +174,11 @@ func LoadPack(dir string) (*Pack, error) {
 		}
 	}
 	return &p, nil
+}
+
+func ptrOr(s *PackStack) PackStack {
+	if s == nil {
+		return PackStack{}
+	}
+	return *s
 }

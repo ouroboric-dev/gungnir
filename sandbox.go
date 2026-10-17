@@ -31,8 +31,8 @@ type SandboxSpec struct {
 	Leaf   string   // the leaf's working copy: mounted read-write
 	GitDir string   // the leaf's git dir, inside Parent/.git/modules: mounted read-only; empty for a scratch folder
 	Egress []string // host names the firewall opens on port 443, besides DNS
-	// Stack is the image of the stack layer of the realm that provides this leaf, pinned by digest.
-	// Empty means the driver's own images. A run with several realms starts leaves with different
+	// Stack is the image of the stack layer of the realm that provides this leaf: pinned by digest, or the
+	// local tag of an image built from the realm's build context (ValidStack). Empty means the driver's own images. A run with several realms starts leaves with different
 	// stacks.
 	Stack string
 	// Services are the containers the leaf's sandbox starts beside the work container, such as a
@@ -110,8 +110,8 @@ func (s SandboxSpec) Validate() error {
 			errs = append(errs, fmt.Errorf("egress %q is not a plain host name (no scheme, port, wildcard or address)", h))
 		}
 	}
-	if s.Stack != "" && !ValidImage(s.Stack) {
-		errs = append(errs, fmt.Errorf("stack %q is not an image pinned by digest", s.Stack))
+	if s.Stack != "" && !ValidStack(s.Stack) {
+		errs = append(errs, fmt.Errorf("stack %q is neither an image pinned by digest nor the tag of a built stack", s.Stack))
 	}
 	return errors.Join(append(errs, ValidateServices(s.Services))...)
 }
