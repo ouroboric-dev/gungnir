@@ -76,6 +76,7 @@ type Node struct {
 	Inputs  []string `yaml:"inputs"`  // agent (scratch): files and folders of the project, copied into the workspace; changes to the copies are ignored
 	From    string   `yaml:"from"`    // publish: the scratch agent whose output is published; tasks: the tasks.md, by glob; init: the leaves file
 	To      string   `yaml:"to"`      // publish: the folder of the project its files go to
+	Leaves  string   `yaml:"leaves"`  // tasks: the leaves file of the spec stage; its leaves are the layers a task may name, beside the leaves the project has
 
 	BackTo  string `yaml:"back_to"` // merge, pointer, tasks: the earlier agent or loop node a refusal goes back into, with the refusal as its input
 	Returns int    `yaml:"returns"` // merge, pointer, tasks: how many times it may go back; DefaultReturns when back_to is set and this is not
@@ -277,6 +278,9 @@ func (c *graphCheck) stage(n *Node, before []Node) error {
 	case KindTasks, KindInit:
 		if !projectPath(n.From) {
 			return fmt.Errorf("%s: node %s: from %q must be a path inside the project, outside .git and .factory", file, n.ID, n.From)
+		}
+		if n.Leaves != "" && !projectPath(n.Leaves) {
+			return fmt.Errorf("%s: node %s: leaves %q must be a path inside the project, outside .git and .factory", file, n.ID, n.Leaves)
 		}
 	}
 	return nil

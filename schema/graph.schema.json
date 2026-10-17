@@ -153,6 +153,7 @@
             "id": { "$ref": "#/$defs/id" },
             "kind": { "const": "tasks" },
             "from": { "type": "string", "minLength": 1 },
+            "leaves": { "type": "string", "minLength": 1 },
             "back_to": { "$ref": "#/$defs/id" },
             "returns": { "type": "integer", "minimum": 1, "maximum": 5 }
           },
