@@ -49,10 +49,18 @@ type Service struct {
 	Image string            // pinned by digest
 	Env   map[string]string // the service's environment: made-up development values, never a secret
 	Ports []int             // the TCP ports the work container may reach; the firewall opens these and no others
+	// Command replaces the image's own command, as an argument vector (no shell), for an image that does
+	// nothing without one, such as an object store that must be told to serve. Empty keeps the image's.
+	Command []string
 }
 
-// MaxServices is how many services one sandbox may start.
-const MaxServices = 8
+// MaxServices is how many services one sandbox may start, and MaxServiceCommand and MaxServiceArg bound
+// the command of one.
+const (
+	MaxServices       = 8
+	MaxServiceCommand = 16
+	MaxServiceArg     = 256
+)
 
 var (
 	image       = regexp.MustCompile(`^[a-z0-9][a-z0-9./_-]*(:[A-Za-z0-9._-]+)?@sha256:[0-9a-f]{64}$`)
@@ -145,6 +153,19 @@ func ValidateServices(services []Service) error {
 				errs = append(errs, fmt.Errorf("service %s: port %d is out of range or listed twice", v.Name, p))
 			}
 			ports[p] = true
+		}
+		if len(v.Command) > MaxServiceCommand {
+			errs = append(errs, fmt.Errorf("service %s: a command of %d arguments; at most %d", v.Name, len(v.Command), MaxServiceCommand))
+		}
+		for i, a := range v.Command {
+			switch {
+			case a == "" || len(a) > MaxServiceArg:
+				errs = append(errs, fmt.Errorf("service %s: command argument %d is empty or over %d bytes", v.Name, i+1, MaxServiceArg))
+			case strings.ContainsAny(a, "\x00\n\r"):
+				errs = append(errs, fmt.Errorf("service %s: command argument %d has a NUL or a line break", v.Name, i+1))
+			case strings.Contains(a, "$"):
+				errs = append(errs, fmt.Errorf("service %s: command argument %d has a '$'; compose would expand it from the operator's environment, so give the value literally", v.Name, i+1))
+			}
 		}
 		for k, val := range v.Env {
 			switch {

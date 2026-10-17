@@ -42,6 +42,9 @@ type PackService struct {
 	Image string            `yaml:"image"` // pinned by digest
 	Env   map[string]string `yaml:"env"`   // made-up development values
 	Ports []int             `yaml:"ports"` // the TCP ports the work container may reach
+	// Command replaces the image's own command, as an argument vector: for an image that does nothing
+	// without one.
+	Command []string `yaml:"command"`
 }
 
 // ServiceList returns the pack's services for a sandbox spec, sorted by name.
@@ -49,7 +52,7 @@ func (p *Pack) ServiceList() []gungnir.Service {
 	var out []gungnir.Service
 	for _, name := range sortedKeys(p.Services) {
 		v := p.Services[name]
-		out = append(out, gungnir.Service{Name: name, Image: v.Image, Env: v.Env, Ports: v.Ports})
+		out = append(out, gungnir.Service{Name: name, Image: v.Image, Env: v.Env, Ports: v.Ports, Command: v.Command})
 	}
 	return out
 }
