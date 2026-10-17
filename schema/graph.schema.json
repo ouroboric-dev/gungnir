@@ -87,8 +87,11 @@
             "kind": { "const": "merge" },
             "repo": { "$ref": "#/$defs/repo" },
             "checks": { "$ref": "#/$defs/names", "minItems": 1 },
-            "timeout": { "$ref": "#/$defs/duration" }
-          }
+            "timeout": { "$ref": "#/$defs/duration" },
+            "back_to": { "$ref": "#/$defs/id" },
+            "returns": { "type": "integer", "minimum": 1, "maximum": 5 }
+          },
+          "dependentRequired": { "returns": ["back_to"] }
         },
         {
           "additionalProperties": false,
@@ -100,8 +103,11 @@
             "checks": { "$ref": "#/$defs/names" },
             "acceptance": { "$ref": "#/$defs/names" },
             "generated": { "type": "array", "items": { "type": "string", "minLength": 1 } },
-            "timeout": { "$ref": "#/$defs/duration" }
-          }
+            "timeout": { "$ref": "#/$defs/duration" },
+            "back_to": { "$ref": "#/$defs/id" },
+            "returns": { "type": "integer", "minimum": 1, "maximum": 5 }
+          },
+          "dependentRequired": { "returns": ["back_to"] }
         },
         {
           "additionalProperties": false,
@@ -136,9 +142,21 @@
           "required": ["from"],
           "properties": {
             "id": { "$ref": "#/$defs/id" },
-            "kind": { "enum": ["tasks", "init"] },
+            "kind": { "const": "init" },
             "from": { "type": "string", "minLength": 1 }
           }
+        },
+        {
+          "additionalProperties": false,
+          "required": ["from"],
+          "properties": {
+            "id": { "$ref": "#/$defs/id" },
+            "kind": { "const": "tasks" },
+            "from": { "type": "string", "minLength": 1 },
+            "back_to": { "$ref": "#/$defs/id" },
+            "returns": { "type": "integer", "minimum": 1, "maximum": 5 }
+          },
+          "dependentRequired": { "returns": ["back_to"] }
         },
         {
           "additionalProperties": false,
@@ -198,8 +216,11 @@
             "id": { "$ref": "#/$defs/id" },
             "kind": { "const": "merge" },
             "realm": { "const": "leaf" },
-            "timeout": { "$ref": "#/$defs/duration" }
-          }
+            "timeout": { "$ref": "#/$defs/duration" },
+            "back_to": { "$ref": "#/$defs/id" },
+            "returns": { "type": "integer", "minimum": 1, "maximum": 5 }
+          },
+          "dependentRequired": { "returns": ["back_to"] }
         },
         {
           "additionalProperties": false,
@@ -210,8 +231,11 @@
             "realm": { "const": "leaf" },
             "acceptance": { "$ref": "#/$defs/names" },
             "generated": { "type": "array", "items": { "type": "string", "minLength": 1 } },
-            "timeout": { "$ref": "#/$defs/duration" }
-          }
+            "timeout": { "$ref": "#/$defs/duration" },
+            "back_to": { "$ref": "#/$defs/id" },
+            "returns": { "type": "integer", "minimum": 1, "maximum": 5 }
+          },
+          "dependentRequired": { "returns": ["back_to"] }
         },
         {
           "additionalProperties": false,

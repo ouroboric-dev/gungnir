@@ -35,6 +35,13 @@ const (
 	KindInit    NodeKind = "init"    // Odin creates the leaves the spec names, each from its realm's template (spec §4.2, §4.1)
 )
 
+// DefaultReturns is how many times a refusal may send a run back into the node named by back_to when the
+// node sets no returns, and MaxReturns the most it may set.
+const (
+	DefaultReturns = 2
+	MaxReturns     = 5
+)
+
 // RealmFrom says whose files a node uses: the lead realm's (the default) or the realm of the task's leaf.
 const (
 	RealmLead = "lead"
@@ -69,6 +76,9 @@ type Node struct {
 	Inputs  []string `yaml:"inputs"`  // agent (scratch): files and folders of the project, copied into the workspace; changes to the copies are ignored
 	From    string   `yaml:"from"`    // publish: the scratch agent whose output is published; tasks: the tasks.md, by glob; init: the leaves file
 	To      string   `yaml:"to"`      // publish: the folder of the project its files go to
+
+	BackTo  string `yaml:"back_to"` // merge, pointer, tasks: the earlier agent or loop node a refusal goes back into, with the refusal as its input
+	Returns int    `yaml:"returns"` // merge, pointer, tasks: how many times it may go back; DefaultReturns when back_to is set and this is not
 
 	Over      string `yaml:"over"`  // foreach: what it repeats for; only "tasks"
 	Body      []Node `yaml:"nodes"` // foreach: the nodes that run for each task, in the task's leaf
@@ -197,6 +207,14 @@ func (c *graphCheck) scope(nodes []Node, body bool) error {
 		}
 		if err := c.stage(n, nodes[:i]); err != nil {
 			return err
+		}
+		if n.BackTo != "" {
+			if j, ok := at[n.BackTo]; !ok || j >= i || (nodes[j].Kind != KindAgent && nodes[j].Kind != KindLoop) {
+				return fmt.Errorf("%s: node %s goes back to %q, which must be an agent or loop node before it", file, n.ID, n.BackTo)
+			}
+			if n.Returns == 0 {
+				n.Returns = DefaultReturns
+			}
 		}
 		if n.Kind == KindForeach {
 			if err := c.scope(n.Body, true); err != nil {
