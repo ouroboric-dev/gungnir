@@ -253,6 +253,7 @@ func TestParseGraphRefusesLoops(t *testing.T) {
 		"a reviewer without a role":     {strings.Replace(loop, "checks: [vet]", "reviewers: [{ id: spec, prompt: r.md }]", 1), bySchema},
 		"a reviewer that climbs":        {strings.Replace(loop, "checks: [vet]", "reviewers: [{ id: spec, role: reviewer, prompt: ../r.md }]", 1), "inside the realm"},
 		"a reviewer twice":              {strings.Replace(loop, "checks: [vet]", "reviewers: ["+rev("spec")+", "+rev("spec")+"]", 1), "used twice"},
+		"a reviewer named like a check": {strings.Replace(loop, "checks: [vet]", "checks: [unit], reviewers: ["+rev("unit")+"]", 1), "also the name of a check"},
 		"six reviewers":                 {strings.Replace(loop, "checks: [vet]", "reviewers: ["+strings.Join([]string{rev("a"), rev("b"), rev("c"), rev("d"), rev("e"), rev("f")}, ", ")+"]", 1), bySchema},
 		"a reviewer key that is a node": {strings.Replace(loop, "checks: [vet]", "reviewers: ["+rev("spec")+"]", 1) + "  - { id: build-spec, kind: exec, run: [echo] }\n", "also a node id"},
 		"two loops with one key":        {strings.Replace(loop, "checks: [vet]", "reviewers: ["+rev("b")+"]", 1) + "  - { id: build-b, kind: loop, repo: repos/app, role: implementer, prompt: p.md, reviewers: [" + rev("x") + "] }\n", "also a node id"},

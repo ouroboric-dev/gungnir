@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"time"
 
 	"github.com/ouroboric-dev/gungnir"
@@ -171,6 +172,9 @@ func checkLoop(file string, n *Node, keys map[string]string) error {
 			return fmt.Errorf("%s: loop %s: reviewer id %q is used twice", file, n.ID, r.ID)
 		}
 		seen[r.ID] = true
+		if slices.Contains(n.Checks, r.ID) {
+			return fmt.Errorf("%s: loop %s: reviewer id %q is also the name of a check of this loop", file, n.ID, r.ID)
+		}
 		if !filepath.IsLocal(r.Prompt) {
 			return fmt.Errorf("%s: loop %s: reviewer %s: prompt %q must be a path inside the realm", file, n.ID, r.ID, r.Prompt)
 		}
