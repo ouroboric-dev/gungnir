@@ -113,17 +113,17 @@ func (s SandboxSpec) Validate() error {
 	if s.Stack != "" && !ValidImage(s.Stack) {
 		errs = append(errs, fmt.Errorf("stack %q is not an image pinned by digest", s.Stack))
 	}
-	return errors.Join(append(errs, s.checkServices()...)...)
+	return errors.Join(append(errs, ValidateServices(s.Services))...)
 }
 
-// checkServices refuses services the driver could not start exactly as described.
-func (s SandboxSpec) checkServices() []error {
+// ValidateServices refuses services a driver could not start exactly as described.
+func ValidateServices(services []Service) error {
 	var errs []error
-	if len(s.Services) > MaxServices {
-		errs = append(errs, fmt.Errorf("%d services; a sandbox starts at most %d", len(s.Services), MaxServices))
+	if len(services) > MaxServices {
+		errs = append(errs, fmt.Errorf("%d services; a sandbox starts at most %d", len(services), MaxServices))
 	}
 	seen := map[string]bool{}
-	for _, v := range s.Services {
+	for _, v := range services {
 		switch {
 		case !serviceName.MatchString(v.Name):
 			errs = append(errs, fmt.Errorf("service name %q must be lower case words joined by dashes", v.Name))
@@ -155,7 +155,7 @@ func (s SandboxSpec) checkServices() []error {
 			}
 		}
 	}
-	return errs
+	return errors.Join(errs...)
 }
 
 // Layout holds where the sandbox mounts the leaf and its git dir, relative to the sandbox's root:

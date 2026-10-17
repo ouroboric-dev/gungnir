@@ -2,14 +2,14 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/ouroboric-dev/gungnir/schema/pack.schema.json",
   "title": "pack.yaml",
-  "description": "A realm pack: its name, version, graph, default roles, check commands, and the leaves its graph works in, with each one's template and first-commit files (spec §9.4; change remote-creates-repos).",
+  "description": "A realm pack: its name, version, graph (when it can lead a run), default roles, check commands, the leaf recipe a build realm offers, its sandbox services, and the default leaves its graph works in (spec §9.4; changes remote-creates-repos and realm-leaf-naming).",
   "type": "object",
   "additionalProperties": false,
-  "required": ["name", "version", "graph"],
+  "required": ["name", "version"],
   "properties": {
     "name": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
     "version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" },
-    "graph": { "type": "string", "minLength": 1 },
+    "graph": { "type": "string", "minLength": 1, "description": "the realm's graph, relative to the pack; a realm that never leads a run has none" },
     "roles": {
       "type": "object",
       "propertyNames": { "pattern": "^[a-z][a-z0-9-]*$" },
@@ -35,6 +35,33 @@
       "properties": {
         "stack": { "type": "string", "pattern": "^[a-z0-9][a-z0-9./_-]*(:[A-Za-z0-9._-]+)?@sha256:[0-9a-f]{64}$", "description": "the stack layer's image, pinned by digest" },
         "egress": { "type": "array", "items": { "type": "string", "minLength": 1 } }
+      }
+    },
+    "leaf": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["description", "template", "first_commit", "implementer", "checks"],
+      "description": "the contract of a build realm: the same fields in every realm, so the graph names roles and Odin resolves them in the realm of the task's leaf",
+      "properties": {
+        "description": { "type": "string", "minLength": 1 },
+        "template": { "type": "string", "minLength": 1 },
+        "first_commit": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
+        "implementer": { "type": "string", "minLength": 1 },
+        "checks": { "type": "array", "minItems": 1, "items": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" } }
+      }
+    },
+    "services": {
+      "type": "object",
+      "propertyNames": { "pattern": "^[a-z][a-z0-9-]*$" },
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["image", "ports"],
+        "properties": {
+          "image": { "type": "string", "pattern": "^[a-z0-9][a-z0-9./_-]*(:[A-Za-z0-9._-]+)?@sha256:[0-9a-f]{64}$" },
+          "env": { "type": "object", "additionalProperties": { "type": "string" } },
+          "ports": { "type": "array", "items": { "type": "integer", "minimum": 1, "maximum": 65535 } }
+        }
       }
     },
     "leaves": {
