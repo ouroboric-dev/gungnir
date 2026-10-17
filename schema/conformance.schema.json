@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/ouroboric-dev/gungnir/schema/conformance.schema.json",
+  "title": "a design-conformance verdict",
+  "description": "The design-conformance reviewer's whole answer: whether the spec deviates from the approved design, and the amendment it proposes when it does (spec §4.2).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["deviation"],
+  "properties": {
+    "deviation": { "type": "boolean" },
+    "amendment": { "type": "string", "maxLength": 8000 }
+  },
+  "if": { "properties": { "deviation": { "const": true } } },
+  "then": { "required": ["amendment"], "properties": { "amendment": { "pattern": "\\S" } } },
+  "else": { "not": { "required": ["amendment"] } }
+}

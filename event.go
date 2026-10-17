@@ -46,6 +46,8 @@ const (
 	EventTaskStarted   EventName = "task_started"   // the first node of a task's shape began
 	EventTaskDone      EventName = "task_done"      // the last node of a task's shape finished
 	EventTaskBlocked   EventName = "task_blocked"   // an unattended run gave a task up and went on with the rest (spec §7.3)
+
+	EventConformanceChecked EventName = "conformance_checked" // the design-conformance reviewer's verdict on a spec was read (spec §4.2)
 )
 
 // Events returns every event name, in the order above.
@@ -57,7 +59,7 @@ func Events() []EventName {
 		EventModeChanged, EventConfigChanged, EventRepoCreated, EventSandboxUp, EventSandboxDown,
 		EventRetry, EventRunPaused, EventFindingRaised, EventFindingClosed, EventFindingReopened,
 		EventRealmLoaded, EventDocsPublished, EventTasksReady, EventNodeReturned, EventTaskStarted, EventTaskDone,
-		EventTaskBlocked}
+		EventTaskBlocked, EventConformanceChecked}
 }
 
 // Event is one ledger line. Fields follow OpenTelemetry's GenAI attribute names (gen_ai.*) where

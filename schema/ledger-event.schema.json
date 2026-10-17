@@ -19,7 +19,7 @@
                "budget_warning", "policy_violation", "pointer_moved", "mode_changed", "config_changed",
                "repo_created", "sandbox_up", "sandbox_down", "retry", "run_paused", "finding_raised",
                "finding_closed", "finding_reopened", "realm_loaded", "docs_published", "tasks_ready",
-               "node_returned", "task_started", "task_done", "task_blocked"]
+               "node_returned", "task_started", "task_done", "task_blocked", "conformance_checked"]
     },
     "ygg.attempt": { "type": "integer", "minimum": 1 },
     "gen_ai.agent.name": { "type": "string" },
