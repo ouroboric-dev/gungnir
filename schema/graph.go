@@ -260,6 +260,9 @@ func (c *graphCheck) stage(n *Node, before []Node) error {
 		}
 		seen := map[string]bool{}
 		for _, in := range n.Inputs {
+			if filepath.Clean(in) == "." {
+				return fmt.Errorf("%s: node %s: input %q must be a path inside the project, not the project itself", file, n.ID, in)
+			}
 			if !projectPath(in) {
 				return fmt.Errorf("%s: node %s: input %q must be a path inside the project, outside .git and .factory", file, n.ID, in)
 			}
