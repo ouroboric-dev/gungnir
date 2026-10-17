@@ -72,8 +72,11 @@ func ParseUmbrella(file string, data []byte) (*Umbrella, error) {
 		if !filepath.IsLocal(p) {
 			return nil, fmt.Errorf("%s: child %q must be a path inside the umbrella", file, p)
 		}
-		if i > 0 && strings.HasPrefix(p, paths[i-1]+"/") {
-			return nil, fmt.Errorf("%s: child %q is inside child %q", file, p, paths[i-1])
+		// '-' and '.' sort before '/', so the path before p may be a sibling: check every earlier path.
+		for _, outer := range paths[:i] {
+			if strings.HasPrefix(p, outer+"/") {
+				return nil, fmt.Errorf("%s: child %q is inside child %q", file, p, outer)
+			}
 		}
 	}
 	if u.Children == nil { // an umbrella with no children yet; Odin adds to the map

@@ -33,8 +33,11 @@ func ParseLeaves(file string, data []byte) (*Leaves, error) {
 		if !projectPath(p) {
 			return nil, fmt.Errorf("%s: leaf %q must be a path inside the project, outside .git and .factory", file, p)
 		}
-		if i > 0 && strings.HasPrefix(p, paths[i-1]+"/") {
-			return nil, fmt.Errorf("%s: leaf %q is inside leaf %q", file, p, paths[i-1])
+		// '-' and '.' sort before '/', so the path before p may be a sibling: check every earlier path.
+		for _, outer := range paths[:i] {
+			if strings.HasPrefix(p, outer+"/") {
+				return nil, fmt.Errorf("%s: leaf %q is inside leaf %q", file, p, outer)
+			}
 		}
 		seen := map[string]bool{}
 		for _, q := range l.Leaves[p].Consumes {

@@ -54,17 +54,18 @@ func TestUmbrellaLeaksPrivateChildrenOfAPublicUmbrella(t *testing.T) {
 func TestParseUmbrellaRefuses(t *testing.T) {
 	head := "owner: brunogbv\nvisibility: private\nchildren:\n"
 	cases := map[string]string{
-		"no owner":                "visibility: private\n",
-		"an unknown visibility":   "owner: brunogbv\nvisibility: internal\n",
-		"an unknown field":        head + "  a: { kind: leaf, owner: o, visibility: private }\nsecrets: x\n",
-		"an unknown kind":         head + "  a: { kind: folder, owner: o, visibility: private }\n",
-		"a child without owner":   head + "  a: { kind: leaf, visibility: private }\n",
-		"a child that climbs":     head + "  ../a: { kind: leaf, owner: o, visibility: private }\n",
-		"an absolute child":       head + "  /srv/a: { kind: leaf, owner: o, visibility: private }\n",
-		"a child inside a child":  head + "  a: { kind: umbrella, owner: o, visibility: private }\n  a/b: { kind: leaf, owner: o, visibility: private }\n",
-		"a child in .git":         head + "  .git/x: { kind: leaf, owner: o, visibility: private }\n",
-		"a child in .factory":     head + "  .factory/x: { kind: leaf, owner: o, visibility: private }\n",
-		"the umbrella as a child": head + "  .: { kind: leaf, owner: o, visibility: private }\n",
+		"no owner":                              "visibility: private\n",
+		"an unknown visibility":                 "owner: brunogbv\nvisibility: internal\n",
+		"an unknown field":                      head + "  a: { kind: leaf, owner: o, visibility: private }\nsecrets: x\n",
+		"an unknown kind":                       head + "  a: { kind: folder, owner: o, visibility: private }\n",
+		"a child without owner":                 head + "  a: { kind: leaf, visibility: private }\n",
+		"a child that climbs":                   head + "  ../a: { kind: leaf, owner: o, visibility: private }\n",
+		"an absolute child":                     head + "  /srv/a: { kind: leaf, owner: o, visibility: private }\n",
+		"a child inside a child":                head + "  a: { kind: umbrella, owner: o, visibility: private }\n  a/b: { kind: leaf, owner: o, visibility: private }\n",
+		"a child inside a child past a sibling": head + "  x: { kind: umbrella, owner: o, visibility: private }\n  x-y: { kind: leaf, owner: o, visibility: private }\n  x/z: { kind: leaf, owner: o, visibility: private }\n",
+		"a child in .git":                       head + "  .git/x: { kind: leaf, owner: o, visibility: private }\n",
+		"a child in .factory":                   head + "  .factory/x: { kind: leaf, owner: o, visibility: private }\n",
+		"the umbrella as a child":               head + "  .: { kind: leaf, owner: o, visibility: private }\n",
 	}
 	for name, y := range cases {
 		if _, err := ParseUmbrella("umbrella.yaml", []byte(y)); err == nil {
