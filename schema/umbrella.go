@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/ouroboric-dev/gungnir"
@@ -17,7 +18,11 @@ type Umbrella struct {
 	Root       bool               `yaml:"root,omitempty"` // the top of the tree: a project, or a company umbrella holding projects
 	Owner      string             `yaml:"owner"`
 	Visibility gungnir.Visibility `yaml:"visibility"`
-	Children   map[string]Child   `yaml:"children,omitempty"` // path relative to the umbrella: child
+	// Realm and RealmVersion pin the lead realm of the project this umbrella is: the realm leaf whose
+	// graph builds it (change realm-leaf-naming). Both are set, or neither.
+	Realm        string           `yaml:"realm,omitempty"`
+	RealmVersion string           `yaml:"realm_version,omitempty"`
+	Children     map[string]Child `yaml:"children,omitempty"` // path relative to the umbrella: child
 }
 
 // ChildKind is what a child node is.
@@ -33,6 +38,14 @@ type Child struct {
 	Kind       ChildKind          `yaml:"kind"`
 	Owner      string             `yaml:"owner"`
 	Visibility gungnir.Visibility `yaml:"visibility"`
+	// Realm and RealmVersion pin the realm leaf that provides this leaf's recipe: its stack layer,
+	// templates, implementer prompt and checks. Both are set, or neither; a leaf with neither uses the
+	// project's lead realm.
+	Realm        string `yaml:"realm,omitempty"`
+	RealmVersion string `yaml:"realm_version,omitempty"`
+	// Consumes lists the sibling leaves this leaf calls, such as a web leaf's api. A leaf's sandbox gets
+	// the services of the realms of the leaves it consumes (spec §6.1, §9.2).
+	Consumes []string `yaml:"consumes,omitempty"`
 }
 
 // UmbrellaFile is the name of an umbrella's metadata file.
@@ -67,7 +80,112 @@ func ParseUmbrella(file string, data []byte) (*Umbrella, error) {
 	if u.Children == nil { // an umbrella with no children yet; Odin adds to the map
 		u.Children = map[string]Child{}
 	}
+	if err := u.checkRealms(file); err != nil {
+		return nil, err
+	}
 	return &u, nil
+}
+
+// checkRealms checks the realm pins and the consumers: a pin is a realm name and a version, together;
+// a leaf consumes other leaves of the umbrella, each once, and never in a ring.
+func (u *Umbrella) checkRealms(file string) error {
+	if err := checkPin(file, "the umbrella", u.Realm, u.RealmVersion); err != nil {
+		return err
+	}
+	for _, p := range u.Paths() {
+		c := u.Children[p]
+		if err := checkPin(file, "child "+p, c.Realm, c.RealmVersion); err != nil {
+			return err
+		}
+		if len(c.Consumes) > 0 && c.Kind != ChildLeaf {
+			return fmt.Errorf("%s: child %s is an umbrella, and only a leaf consumes other leaves", file, p)
+		}
+		seen := map[string]bool{}
+		for _, q := range c.Consumes {
+			switch other, ok := u.Children[q]; {
+			case q == p:
+				return fmt.Errorf("%s: child %s consumes itself", file, p)
+			case !ok || other.Kind != ChildLeaf:
+				return fmt.Errorf("%s: child %s consumes %q, which is not a leaf of this umbrella", file, p, q)
+			case seen[q]:
+				return fmt.Errorf("%s: child %s consumes %s twice", file, p, q)
+			}
+			seen[q] = true
+		}
+	}
+	return u.checkRing(file)
+}
+
+// checkRing refuses leaves that consume each other, directly or through others.
+func (u *Umbrella) checkRing(file string) error {
+	state := map[string]int{} // 1: on the path being walked, 2: done
+	var walk func(p string, path []string) error
+	walk = func(p string, path []string) error {
+		switch state[p] {
+		case 1:
+			return fmt.Errorf("%s: leaves consume each other in a ring: %s", file, strings.Join(append(path, p), " -> "))
+		case 2:
+			return nil
+		}
+		state[p] = 1
+		for _, q := range u.Children[p].Consumes {
+			if err := walk(q, append(path, p)); err != nil {
+				return err
+			}
+		}
+		state[p] = 2
+		return nil
+	}
+	for _, p := range u.Paths() {
+		if err := walk(p, nil); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+var (
+	realmName    = regexp.MustCompile(`^[a-z][a-z0-9]*(-[a-z0-9]+)*$`)
+	realmVersion = regexp.MustCompile(`^[0-9]+\.[0-9]+\.[0-9]+$`)
+)
+
+// ValidRealm reports whether s names a realm leaf: lower case, with dashes between words.
+func ValidRealm(s string) bool { return realmName.MatchString(s) }
+
+// ValidVersion reports whether s is a version of the form 1.2.3.
+func ValidVersion(s string) bool { return realmVersion.MatchString(s) }
+
+// checkPin checks that a realm and its version are both set or both empty, and well formed.
+func checkPin(file, where, realm, version string) error {
+	switch {
+	case realm == "" && version == "":
+		return nil
+	case realm == "" || version == "":
+		return fmt.Errorf("%s: %s sets a realm or a realm version without the other; a pin is both", file, where)
+	case !ValidRealm(realm):
+		return fmt.Errorf("%s: %s: realm %q is not a realm name (lower case words joined by dashes)", file, where, realm)
+	case !ValidVersion(version):
+		return fmt.Errorf("%s: %s: realm version %q is not a version such as 1.2.3", file, where, version)
+	}
+	return nil
+}
+
+// Pin is a realm leaf at a version, and where the umbrella pins it: "." for the umbrella itself, or
+// a child's path.
+type Pin struct{ Realm, Version, Where string }
+
+// Pins returns every realm pin of the umbrella: its own lead realm, then each child's, by path.
+func (u *Umbrella) Pins() []Pin {
+	var pins []Pin
+	if u.Realm != "" {
+		pins = append(pins, Pin{u.Realm, u.RealmVersion, "."})
+	}
+	for _, p := range u.Paths() {
+		if c := u.Children[p]; c.Realm != "" {
+			pins = append(pins, Pin{c.Realm, c.RealmVersion, p})
+		}
+	}
+	return pins
 }
 
 // Paths returns the child paths, sorted.
