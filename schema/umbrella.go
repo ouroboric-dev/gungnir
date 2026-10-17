@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strings"
 
 	"github.com/ouroboric-dev/gungnir"
@@ -144,17 +143,6 @@ func (u *Umbrella) checkRing(file string) error {
 	return nil
 }
 
-var (
-	realmName    = regexp.MustCompile(`^[a-z][a-z0-9]*(-[a-z0-9]+)*$`)
-	realmVersion = regexp.MustCompile(`^[0-9]+\.[0-9]+\.[0-9]+$`)
-)
-
-// ValidRealm reports whether s names a realm leaf: lower case, with dashes between words.
-func ValidRealm(s string) bool { return realmName.MatchString(s) }
-
-// ValidVersion reports whether s is a version of the form 1.2.3.
-func ValidVersion(s string) bool { return realmVersion.MatchString(s) }
-
 // checkPin checks that a realm and its version are both set or both empty, and well formed.
 func checkPin(file, where, realm, version string) error {
 	switch {
@@ -162,9 +150,9 @@ func checkPin(file, where, realm, version string) error {
 		return nil
 	case realm == "" || version == "":
 		return fmt.Errorf("%s: %s sets a realm or a realm version without the other; a pin is both", file, where)
-	case !ValidRealm(realm):
+	case !gungnir.ValidRealm(realm):
 		return fmt.Errorf("%s: %s: realm %q is not a realm name (lower case words joined by dashes)", file, where, realm)
-	case !ValidVersion(version):
+	case !gungnir.ValidVersion(version):
 		return fmt.Errorf("%s: %s: realm version %q is not a version such as 1.2.3", file, where, version)
 	}
 	return nil

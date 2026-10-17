@@ -39,6 +39,13 @@ type Repo struct {
 	Description string            // one line
 	Path        string            // where its working copy goes, relative to its parent umbrella
 	Files       map[string][]byte // the first commit: path in the repo to content
+	// Realm and RealmVersion pin the realm leaf that provides the new leaf's recipe, and Consumes lists
+	// the sibling leaves it calls (paths from the parent umbrella). A remote records them with the
+	// leaf, in the same step, so a leaf never exists without its pin. A Repo with none uses the
+	// project's lead realm.
+	Realm        string
+	RealmVersion string
+	Consumes     []string
 }
 
 var repoName = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]*$`)
@@ -65,6 +72,27 @@ func (r Repo) Validate() error {
 		if !filepath.IsLocal(p) || p == ".git" || strings.HasPrefix(p, ".git/") {
 			errs = append(errs, fmt.Errorf("first-commit file %q must be a relative path outside .git", p))
 		}
+	}
+	switch {
+	case r.Realm == "" && r.RealmVersion == "":
+	case r.Realm == "" || r.RealmVersion == "":
+		errs = append(errs, errors.New("a realm pin is a realm and its version, together"))
+	case !ValidRealm(r.Realm):
+		errs = append(errs, fmt.Errorf("realm %q is not a realm name", r.Realm))
+	case !ValidVersion(r.RealmVersion):
+		errs = append(errs, fmt.Errorf("realm version %q is not a version such as 1.2.3", r.RealmVersion))
+	}
+	seen := map[string]bool{}
+	for _, c := range r.Consumes {
+		switch {
+		case !filepath.IsLocal(c):
+			errs = append(errs, fmt.Errorf("consumed leaf %q must be a relative path inside the parent umbrella", c))
+		case c == r.Path:
+			errs = append(errs, fmt.Errorf("leaf %s can't consume itself", c))
+		case seen[c]:
+			errs = append(errs, fmt.Errorf("consumed leaf %s is listed twice", c))
+		}
+		seen[c] = true
 	}
 	return errors.Join(errs...)
 }
