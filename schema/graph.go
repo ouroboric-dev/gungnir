@@ -65,6 +65,8 @@ type Node struct {
 	Gate     gungnir.Gate `yaml:"gate"`      // gate: the approval point
 	Reruns   string       `yaml:"reruns"`    // gate: the agent node a rejection re-runs; set by ParseGraph
 
+	DeviationFrom string `yaml:"deviation_from"` // gate (spec): the scratch reviewer whose conformance.json says whether the spec deviates from the design; a deviation stops the gate (spec §7.1)
+
 	Repo       string     `yaml:"repo"`       // exec, agent, loop, merge, pointer: a repo of the project, relative to it; "." is the project umbrella
 	Checks     []string   `yaml:"checks"`     // loop, merge, pointer: pack checks run in the leaf (a loop's, in order, after each attempt)
 	Attempts   int        `yaml:"attempts"`   // loop: how many attempts before it escalates; DefaultAttempts when unset
@@ -73,6 +75,7 @@ type Node struct {
 	Generated  []string   `yaml:"generated"`  // pointer: generated files of the parent umbrella, committed with the move under the shrink guard
 
 	Scratch bool     `yaml:"scratch"` // agent: runs in a scratch workspace, not a leaf, and writes its documents to out/ (spec §3.3 rule 1)
+	Reviews string   `yaml:"reviews"` // agent (scratch): an earlier scratch agent whose out/ this one reads, as reviewed/ in its own workspace (spec §4.2, the design-conformance review)
 	Inputs  []string `yaml:"inputs"`  // agent (scratch): files and folders of the project, copied into the workspace; changes to the copies are ignored
 	From    string   `yaml:"from"`    // publish: the scratch agent whose output is published; tasks: the tasks.md, by glob; init: the leaves file
 	To      string   `yaml:"to"`      // publish: the folder of the project its files go to
@@ -257,6 +260,10 @@ func (c *graphCheck) stage(n *Node, before []Node) error {
 			return fmt.Errorf("%s: node %s: a scratch agent writes its output to out/, so it can't be read-only", file, n.ID)
 		case !n.Scratch && len(n.Inputs) > 0:
 			return fmt.Errorf("%s: node %s: only a scratch agent takes inputs", file, n.ID)
+		case !n.Scratch && n.Reviews != "":
+			return fmt.Errorf("%s: node %s: only a scratch agent reviews another scratch agent's output", file, n.ID)
+		case n.Reviews != "" && !slices.ContainsFunc(before, func(m Node) bool { return m.ID == n.Reviews && m.Kind == KindAgent && m.Scratch }):
+			return fmt.Errorf("%s: node %s reviews %q, which must be a scratch agent node before it", file, n.ID, n.Reviews)
 		}
 		seen := map[string]bool{}
 		for _, in := range n.Inputs {
@@ -277,6 +284,18 @@ func (c *graphCheck) stage(n *Node, before []Node) error {
 		}
 		if n.To == "." || !projectPath(n.To) {
 			return fmt.Errorf("%s: node %s: to %q must be a folder of the project (not the project itself, .git or .factory)", file, n.ID, n.To)
+		}
+	case KindGate:
+		if n.DeviationFrom == "" {
+			break
+		}
+		if n.Gate != gungnir.GateSpec {
+			return fmt.Errorf("%s: node %s: deviation_from belongs to the spec gate, not %s", file, n.ID, n.Gate)
+		}
+		if !slices.ContainsFunc(before, func(m Node) bool {
+			return m.ID == n.DeviationFrom && m.Kind == KindAgent && m.Scratch && m.Reviews != ""
+		}) {
+			return fmt.Errorf("%s: node %s: deviation_from %q must be a scratch reviewer (an agent with reviews) before it", file, n.ID, n.DeviationFrom)
 		}
 	case KindTasks, KindInit:
 		if !projectPath(n.From) {
