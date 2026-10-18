@@ -66,6 +66,15 @@
         "checks": { "type": "array", "minItems": 1, "items": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" } }
       }
     },
+    "routing": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["threshold"],
+      "properties": {
+        "threshold": { "type": "number", "exclusiveMinimum": 0, "maximum": 1, "description": "the right-first score a routing index needs on the project's bench to ship" },
+        "bench": { "type": "string", "minLength": 1, "description": "the bench file, from the project root; .ygg/routing-bench.yaml when absent" }
+      }
+    },
     "services": {
       "type": "object",
       "propertyNames": { "pattern": "^[a-z][a-z0-9-]*$" },

@@ -25,6 +25,26 @@ type Pack struct {
 	// Services are the containers a sandbox of a leaf of this realm starts beside the work container,
 	// and the sandbox of each leaf that consumes it (spec §6.1, §9.2).
 	Services map[string]PackService `yaml:"services"`
+	// Routing sets what a routing index must score on the project's bench before it ships (spec §8.3).
+	// A pack without the block ships its indexes unmeasured.
+	Routing *PackRouting `yaml:"routing"`
+}
+
+// DefaultBenchPath is where a project keeps its routing bench, from the project root.
+const DefaultBenchPath = ".ygg/routing-bench.yaml"
+
+// PackRouting is the routing block of a lead realm's pack: the right-first score an index needs to ship.
+type PackRouting struct {
+	Threshold float64 `yaml:"threshold"` // above 0 and at most 1: the share of the bench's questions the index answers right first
+	Bench     string  `yaml:"bench"`     // the bench file, from the project root; DefaultBenchPath when empty
+}
+
+// BenchPath returns the bench file, from the project root.
+func (r *PackRouting) BenchPath() string {
+	if r.Bench == "" {
+		return DefaultBenchPath
+	}
+	return r.Bench
 }
 
 // PackRecipe is the contract of a build realm: how to make a leaf, what to tell its implementer, and
@@ -139,6 +159,9 @@ func LoadPack(dir string) (*Pack, error) {
 	}
 	if err := p.checkRecipe(file, dir); err != nil {
 		return nil, err
+	}
+	if p.Routing != nil && !filepath.IsLocal(p.Routing.BenchPath()) {
+		return nil, fmt.Errorf("%s: routing bench %q must be a path inside the project", file, p.Routing.BenchPath())
 	}
 	if p.Sandbox != nil {
 		for _, st := range []PackStack{{Stack: p.Sandbox.Stack, Build: p.Sandbox.Build, Target: p.Sandbox.Target}, ptrOr(p.Sandbox.Acceptance)} {
