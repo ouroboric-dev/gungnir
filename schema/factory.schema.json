@@ -58,6 +58,18 @@
       "required": ["dir"],
       "properties": { "dir": { "type": "string", "minLength": 1, "description": "an absolute folder with one checkout of each realm leaf, so --realm midgard-react finds <dir>/midgard-react" } }
     },
+    "grader": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tasks_dir", "suite_dir", "timeout", "memory", "cpus"],
+      "properties": {
+        "tasks_dir": { "type": "string", "minLength": 1, "description": "an absolute folder: a checkout of the task repo, <dir>/<task id>/{task.toml,instruction.md,environment/}" },
+        "suite_dir": { "type": "string", "minLength": 1, "description": "an absolute folder: the store of hidden suites, <dir>/<task id>/<suite>/tests/; never mounted into an agent's sandbox" },
+        "timeout": { "type": "string", "pattern": "^[1-9][0-9]*(ms|s|m|h)$" },
+        "memory": { "type": "string", "pattern": "^([1-9][0-9]*[mg]|none)$", "description": "the container's memory limit, such as 4g; none asks for no limit, for an engine that cannot apply one (rootless Podman with no cgroup delegation)" },
+        "cpus": { "type": "integer", "minimum": 0, "maximum": 256, "description": "the container's CPUs; 0 asks for no limit, as memory: none does" }
+      }
+    },
     "skills": {
       "type": "object",
       "additionalProperties": false,

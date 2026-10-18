@@ -20,6 +20,17 @@ type Factory struct {
 	Sandbox *Sandbox                `yaml:"sandbox"` // required when a role runs a real agent (spec §6)
 	Skills  Skills                  `yaml:"skills"`
 	Realms  *Realms                 `yaml:"realms"` // where the realm leaves are, so --realm can name one
+	Grader  *Grader                 `yaml:"grader"` // where the benchmark tasks and the hidden suites are, and the limits of a grading run (spec §11)
+}
+
+// Grader says where grading finds its inputs and how much it may use (spec §11, change benchmark-split).
+// Nothing is defaulted: the operator sets every limit.
+type Grader struct {
+	TasksDir string   `yaml:"tasks_dir"` // a checkout of the task repo (mimir): <dir>/<task id>/{task.toml,instruction.md,environment/}
+	SuiteDir string   `yaml:"suite_dir"` // the store of hidden suites: <dir>/<task id>/<suite>/tests/. It is never mounted into an agent's sandbox
+	Timeout  Duration `yaml:"timeout"`   // the most one grading run's container may run
+	Memory   string   `yaml:"memory"`    // the container's memory limit, such as 4g; "none" is no limit (an engine that cannot apply one)
+	CPUs     int      `yaml:"cpus"`      // the container's CPUs; 0 is no limit
 }
 
 // Realms says where the operator keeps the realm leaves: a folder with one checkout of each, such as
@@ -240,6 +251,11 @@ func (f *Factory) checkSandbox() error {
 	if r := f.Realms; r != nil && (!filepath.IsAbs(r.Dir) || filepath.Clean(r.Dir) != r.Dir || r.Dir == "/") {
 		return fmt.Errorf("realms.dir %q must be a clean, absolute path, and not the root", r.Dir)
 	}
+	if g := f.Grader; g != nil {
+		if err := g.check(); err != nil {
+			return err
+		}
+	}
 	if f.Sandbox == nil {
 		for _, r := range sortedKeys(f.Roles) {
 			if agent := f.Roles[r].Agent; agent != "scripted" {
@@ -262,6 +278,36 @@ func (f *Factory) checkSandbox() error {
 			return fmt.Errorf("sandbox.mounts: host %q is listed twice", m.Host)
 		}
 		seen[m.Host] = true
+	}
+	return nil
+}
+
+// NoLimit is the value of grader.memory that asks for no memory limit.
+const NoLimit = "none"
+
+// Limits returns the memory and CPU limits to give the grader's container: "" and 0 mean no limit. An
+// operator on an engine that cannot apply limits (rootless Podman with no cgroup delegation) writes
+// `memory: none` and `cpus: 0`. Writing it is the choice; the factory never picks it for them.
+func (g *Grader) Limits() (memory string, cpus int) {
+	if g.Memory == NoLimit {
+		return "", g.CPUs
+	}
+	return g.Memory, g.CPUs
+}
+
+// check refuses a grader with a folder that is not clean and absolute, one folder inside the other (a
+// hidden suite inside a folder an agent may be given, or the reverse), or a limit that is not positive.
+func (g *Grader) check() error {
+	for _, d := range []struct{ name, path string }{{"tasks_dir", g.TasksDir}, {"suite_dir", g.SuiteDir}} {
+		if !filepath.IsAbs(d.path) || filepath.Clean(d.path) != d.path || d.path == "/" {
+			return fmt.Errorf("grader.%s %q must be a clean, absolute path, and not the root", d.name, d.path)
+		}
+	}
+	if g.TasksDir == g.SuiteDir || strings.HasPrefix(g.TasksDir, g.SuiteDir+"/") || strings.HasPrefix(g.SuiteDir, g.TasksDir+"/") {
+		return fmt.Errorf("grader: tasks_dir %q and suite_dir %q must be two folders, neither inside the other", g.TasksDir, g.SuiteDir)
+	}
+	if g.Timeout <= 0 {
+		return fmt.Errorf("grader.timeout must be positive")
 	}
 	return nil
 }

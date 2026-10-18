@@ -34,6 +34,19 @@ The contract: Go interface types and JSON schemas for ledger events, `graph.yaml
   A realm may name a second stack for the acceptance checks that run on a snapshot of the whole project.
 - Defines the design-conformance review (spec §4.2): a scratch reviewer (`reviews`) reads another scratch
   agent's output, its verdict (`Conformance`) is read exactly, and the spec gate reads it (`deviation_from`).
+- Defines the grader's contract (spec §11): the `grade` node, which is the last node of a graph and has no
+  other field; the `grader:` block of `factory.yaml` (`tasks_dir`, `suite_dir`, `timeout`, `memory`,
+  `cpus`: all five are set, none has a default, the two folders are separate and `memory: none` with
+  `cpus: 0` is the written choice of no limit); `score.json` (`ygg.score/v1`: the reward, the fail-to-pass
+  and pass-to-pass tallies, the categories and their weights) and a suite's `manifest.json`
+  (`ygg.suite/v1`). A score that does not add up and a manifest that can be read two ways are refused.
+- Defines the ledger events of grading (`grade_started`, `grade_finished`, `grade_refused`), of routing
+  (`routing_index_built`, `pointer_contract_checked`) and of dependency checks (`deps_checked`,
+  `deps_bump`). A reward of 0 is still written. A refusal has one reason: `retired`, `missing_suite`,
+  `brief_changed`, `bad_manifest` or `bad_task`.
+- Defines the `routing` block of a lead realm's `pack.yaml` (`threshold`, and `bench`, the bench file from
+  the project root): the share of bench questions an index must answer right first before it ships. The
+  hard approval point `pointer-contract` is in the schema of the gates.
 - Validates configs against those schemas.
 - Takes every interface change first: one PR here, plus one in each affected component (spec §1).
 

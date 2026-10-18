@@ -48,6 +48,14 @@ const (
 	EventTaskBlocked   EventName = "task_blocked"   // an unattended run gave a task up and went on with the rest (spec §7.3)
 
 	EventConformanceChecked EventName = "conformance_checked" // the design-conformance reviewer's verdict on a spec was read (spec §4.2)
+
+	EventGradeStarted           EventName = "grade_started"            // the hidden suite began to run against a run's /app (spec §11)
+	EventGradeFinished          EventName = "grade_finished"           // the suite ended and score.json was written
+	EventGradeRefused           EventName = "grade_refused"            // grading was refused before anything was built, with a reason (GradeReason)
+	EventRoutingIndexBuilt      EventName = "routing_index_built"      // a wiring or impact index was generated
+	EventPointerContractChecked EventName = "pointer_contract_checked" // the pointer-contract gate judged a pointer move
+	EventDepsChecked            EventName = "deps_checked"             // a realm's dependency policy was checked
+	EventDepsBump               EventName = "deps_bump"                // ygg deps bump ran a stage on a product
 )
 
 // Events returns every event name, in the order above.
@@ -59,7 +67,8 @@ func Events() []EventName {
 		EventModeChanged, EventConfigChanged, EventRepoCreated, EventSandboxUp, EventSandboxDown,
 		EventRetry, EventRunPaused, EventFindingRaised, EventFindingClosed, EventFindingReopened,
 		EventRealmLoaded, EventDocsPublished, EventTasksReady, EventNodeReturned, EventTaskStarted, EventTaskDone,
-		EventTaskBlocked, EventConformanceChecked}
+		EventTaskBlocked, EventConformanceChecked, EventGradeStarted, EventGradeFinished, EventGradeRefused,
+		EventRoutingIndexBuilt, EventPointerContractChecked, EventDepsChecked, EventDepsBump}
 }
 
 // Event is one ledger line. Fields follow OpenTelemetry's GenAI attribute names (gen_ai.*) where
@@ -105,6 +114,34 @@ type Event struct {
 
 	FindingAttempts int `json:"ygg.finding.attempts,omitempty"` // finding_closed: the loop attempts the finding took to close
 	FindingReopens  int `json:"ygg.finding.reopens,omitempty"`  // finding_closed, finding_reopened: how often it came back
+
+	// grade_started, grade_finished, grade_refused (Task is the task graded)
+	Suite       string      `json:"ygg.grade.suite,omitempty"`
+	BriefSHA256 string      `json:"ygg.grade.brief_sha256,omitempty"`
+	Image       string      `json:"ygg.grade.image,omitempty"`        // grade_started: the image the suite runs in
+	ScorePath   string      `json:"ygg.grade.score_path,omitempty"`   // grade_finished: where score.json is, in the run folder
+	Reward      *float64    `json:"ygg.grade.reward,omitempty"`       // grade_finished: a pointer, so a reward of 0 is still written
+	FailToPass  string      `json:"ygg.grade.fail_to_pass,omitempty"` // grade_finished: "passed/total"
+	PassToPass  string      `json:"ygg.grade.pass_to_pass,omitempty"`
+	Reason      GradeReason `json:"ygg.grade.reason,omitempty"` // grade_refused: a GradeReason
+
+	// routing_index_built; a count of 0 is left out
+	IndexKind string `json:"ygg.routing.kind,omitempty"` // wiring or impact
+	Edges     int    `json:"ygg.routing.edges,omitempty"`
+	Extracted int    `json:"ygg.routing.extracted,omitempty"`
+	Inferred  int    `json:"ygg.routing.inferred,omitempty"`
+
+	// pointer_contract_checked; Verdict is also deps_checked's and deps_bump's (pass or fail)
+	Move     string `json:"ygg.pointer.move,omitempty"`
+	Evidence string `json:"ygg.pointer.evidence,omitempty"` // extracted, inferred or oasdiff
+	Verdict  string `json:"ygg.verdict,omitempty"`
+
+	// deps_checked (Realm names the realm), deps_bump
+	Findings int    `json:"ygg.deps.findings,omitempty"`
+	Package  string `json:"ygg.deps.package,omitempty"`
+	From     string `json:"ygg.deps.from,omitempty"`
+	To       string `json:"ygg.deps.to,omitempty"`
+	Stage    string `json:"ygg.deps.stage,omitempty"` // canary or rollout
 
 	Prev string `json:"prev"` // hex SHA-256 of the previous line; 64 zeros on the first line
 }

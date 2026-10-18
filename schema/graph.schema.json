@@ -39,7 +39,7 @@
     "node": {
       "type": "object",
       "required": ["id", "kind"],
-      "properties": { "kind": { "enum": ["exec", "agent", "gate", "merge", "pointer", "loop", "foreach", "publish", "tasks", "init"] } },
+      "properties": { "kind": { "enum": ["exec", "agent", "gate", "merge", "pointer", "loop", "foreach", "publish", "tasks", "init", "grade"] } },
       "oneOf": [
         {
           "additionalProperties": false,
@@ -160,6 +160,13 @@
             "returns": { "type": "integer", "minimum": 1, "maximum": 5 }
           },
           "dependentRequired": { "returns": ["back_to"] }
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "id": { "$ref": "#/$defs/id" },
+            "kind": { "const": "grade" }
+          }
         },
         {
           "additionalProperties": false,
