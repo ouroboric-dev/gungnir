@@ -38,7 +38,7 @@ func TestTheGraderBlockIsRefusedWhenItIsNotExact(t *testing.T) {
 		"no memory":                   {strings.Replace(graderBlock, "  memory: 4g\n", "", 1), "memory"},
 		"a memory with no unit":       {strings.Replace(graderBlock, "4g", "4", 1), "memory"},
 		"no cpus":                     {strings.Replace(graderBlock, "  cpus: 4\n", "", 1), "cpus"},
-		"zero cpus":                   {strings.Replace(graderBlock, "cpus: 4", "cpus: 0", 1), "cpus"},
+		"negative cpus":               {strings.Replace(graderBlock, "cpus: 4", "cpus: -1", 1), "cpus"},
 		"no suite folder":             {strings.Replace(graderBlock, "  suite_dir: /home/op/suites\n", "", 1), "suite_dir"},
 		"an unknown field":            {graderBlock + "  network: true\n", "network"},
 	}
@@ -49,5 +49,22 @@ func TestTheGraderBlockIsRefusedWhenItIsNotExact(t *testing.T) {
 		} else if !strings.Contains(err.Error(), c.want) || strings.Contains(err.Error(), "no complete budget caps") {
 			t.Errorf("%s: ParseFactory() = %v, want an error naming %q", name, err, c.want)
 		}
+	}
+}
+
+func TestTheGraderMayAskForNoLimitAndOnlyByWritingIt(t *testing.T) {
+	f, err := ParseFactory("factory.yaml", []byte(factoryHead+strings.NewReplacer("memory: 4g", "memory: none", "cpus: 4", "cpus: 0").Replace(graderBlock)))
+	if err != nil {
+		t.Fatalf("ParseFactory() = %v", err)
+	}
+	if m, c := f.Grader.Limits(); m != "" || c != 0 {
+		t.Errorf("Limits() = %q, %d; want no limit", m, c)
+	}
+	f, err = ParseFactory("factory.yaml", []byte(factoryHead+graderBlock))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if m, c := f.Grader.Limits(); m != "4g" || c != 4 {
+		t.Errorf("Limits() = %q, %d; want 4g and 4", m, c)
 	}
 }

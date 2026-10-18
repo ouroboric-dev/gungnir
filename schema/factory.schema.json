@@ -66,8 +66,8 @@
         "tasks_dir": { "type": "string", "minLength": 1, "description": "an absolute folder: a checkout of the task repo, <dir>/<task id>/{task.toml,instruction.md,environment/}" },
         "suite_dir": { "type": "string", "minLength": 1, "description": "an absolute folder: the store of hidden suites, <dir>/<task id>/<suite>/tests/; never mounted into an agent's sandbox" },
         "timeout": { "type": "string", "pattern": "^[1-9][0-9]*(ms|s|m|h)$" },
-        "memory": { "type": "string", "pattern": "^[1-9][0-9]*[mg]$", "description": "the container's memory limit, such as 4g" },
-        "cpus": { "type": "integer", "minimum": 1, "maximum": 256 }
+        "memory": { "type": "string", "pattern": "^([1-9][0-9]*[mg]|none)$", "description": "the container's memory limit, such as 4g; none asks for no limit, for an engine that cannot apply one (rootless Podman with no cgroup delegation)" },
+        "cpus": { "type": "integer", "minimum": 0, "maximum": 256, "description": "the container's CPUs; 0 asks for no limit, as memory: none does" }
       }
     },
     "skills": {

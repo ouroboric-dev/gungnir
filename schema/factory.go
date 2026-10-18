@@ -29,8 +29,8 @@ type Grader struct {
 	TasksDir string   `yaml:"tasks_dir"` // a checkout of the task repo (mimir): <dir>/<task id>/{task.toml,instruction.md,environment/}
 	SuiteDir string   `yaml:"suite_dir"` // the store of hidden suites: <dir>/<task id>/<suite>/tests/. It is never mounted into an agent's sandbox
 	Timeout  Duration `yaml:"timeout"`   // the most one grading run's container may run
-	Memory   string   `yaml:"memory"`    // the container's memory limit, such as 4g
-	CPUs     int      `yaml:"cpus"`      // the container's CPUs
+	Memory   string   `yaml:"memory"`    // the container's memory limit, such as 4g; "none" is no limit (an engine that cannot apply one)
+	CPUs     int      `yaml:"cpus"`      // the container's CPUs; 0 is no limit
 }
 
 // Realms says where the operator keeps the realm leaves: a folder with one checkout of each, such as
@@ -280,6 +280,19 @@ func (f *Factory) checkSandbox() error {
 		seen[m.Host] = true
 	}
 	return nil
+}
+
+// NoLimit is the value of grader.memory that asks for no memory limit.
+const NoLimit = "none"
+
+// Limits returns the memory and CPU limits to give the grader's container: "" and 0 mean no limit. An
+// operator on an engine that cannot apply limits (rootless Podman with no cgroup delegation) writes
+// `memory: none` and `cpus: 0`. Writing it is the choice; the factory never picks it for them.
+func (g *Grader) Limits() (memory string, cpus int) {
+	if g.Memory == NoLimit {
+		return "", g.CPUs
+	}
+	return g.Memory, g.CPUs
 }
 
 // check refuses a grader with a folder that is not clean and absolute, one folder inside the other (a
