@@ -33,6 +33,7 @@ const (
 	KindPublish NodeKind = "publish" // Odin copies a scratch agent's output into the project and commits it (spec §3.3 rule 1)
 	KindTasks   NodeKind = "tasks"   // Odin reads the plan's tasks.md, checks every task is ready, and writes features.json (spec §4.2)
 	KindInit    NodeKind = "init"    // Odin creates the leaves the spec names, each from its realm's template (spec §4.2, §4.1)
+	KindGrade   NodeKind = "grade"   // Odin stops every sandbox, exports the project's /app and grades it against the hidden suite; the last node of a graph (spec §11)
 )
 
 // DefaultReturns is how many times a refusal may send a run back into the node named by back_to when the
@@ -155,7 +156,8 @@ func LoadGraph(path string) (*Graph, error) {
 // one foreach body), or else the nearest one before it. A rejection's reason is input for an agent, so
 // it never re-runs an exec node, which would drop it. A loop's attempts default to DefaultAttempts, its
 // reviewers' ids are unique, and a reviewer's session key (the loop's id, a dash and the reviewer's id)
-// never equals a node's id. A foreach node's body is checked as a graph of its own, in which a node
+// never equals a node's id. A grade node is the last node of the graph, because it runs after every
+// sandbox has stopped. A foreach node's body is checked as a graph of its own, in which a node
 // names no repo: the task's leaf is its repo.
 func ParseGraph(file string, data []byte) (*Graph, error) {
 	var g Graph
@@ -165,6 +167,11 @@ func ParseGraph(file string, data []byte) (*Graph, error) {
 	c := &graphCheck{file: file, seen: map[string]bool{}, keys: map[string]string{}}
 	if err := c.scope(g.Nodes, false); err != nil {
 		return nil, err
+	}
+	for i, n := range g.Nodes {
+		if n.Kind == KindGrade && i != len(g.Nodes)-1 {
+			return nil, fmt.Errorf("%s: node %s: a grade node must be the last node of the graph and there is one at most: grading starts only after every sandbox has stopped", file, n.ID)
+		}
 	}
 	for key, loop := range c.keys {
 		if c.seen[key] {

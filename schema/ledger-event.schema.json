@@ -19,7 +19,8 @@
                "budget_warning", "policy_violation", "pointer_moved", "mode_changed", "config_changed",
                "repo_created", "sandbox_up", "sandbox_down", "retry", "run_paused", "finding_raised",
                "finding_closed", "finding_reopened", "realm_loaded", "docs_published", "tasks_ready",
-               "node_returned", "task_started", "task_done", "task_blocked", "conformance_checked"]
+               "node_returned", "task_started", "task_done", "task_blocked", "conformance_checked", "grade_started", "grade_finished",
+               "grade_refused", "routing_index_built", "pointer_contract_checked", "deps_checked", "deps_bump"]
     },
     "ygg.attempt": { "type": "integer", "minimum": 1 },
     "gen_ai.agent.name": { "type": "string" },
@@ -50,6 +51,31 @@
     "ygg.finding.severity": { "enum": ["blocker", "major", "minor"] },
     "ygg.finding.attempts": { "type": "integer", "minimum": 1 },
     "ygg.finding.reopens": { "type": "integer", "minimum": 1 },
+    "ygg.grade.suite": { "type": "string", "pattern": "^[a-z0-9][a-z0-9._-]*$" },
+    "ygg.grade.brief_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "ygg.grade.image": { "type": "string", "minLength": 1 },
+    "ygg.grade.score_path": { "type": "string", "minLength": 1 },
+    "ygg.grade.reward": { "type": "number", "minimum": 0, "maximum": 1 },
+    "ygg.grade.fail_to_pass": { "$ref": "#/$defs/tally" },
+    "ygg.grade.pass_to_pass": { "$ref": "#/$defs/tally" },
+    "ygg.grade.reason": { "enum": ["retired", "missing_suite", "brief_changed", "bad_manifest", "bad_task"] },
+    "ygg.routing.kind": { "enum": ["wiring", "impact"] },
+    "ygg.routing.edges": { "type": "integer", "minimum": 1 },
+    "ygg.routing.extracted": { "type": "integer", "minimum": 1 },
+    "ygg.routing.inferred": { "type": "integer", "minimum": 1 },
+    "ygg.pointer.move": { "type": "string", "minLength": 1 },
+    "ygg.pointer.evidence": { "enum": ["extracted", "inferred", "oasdiff"] },
+    "ygg.verdict": { "enum": ["pass", "fail", "escalate"] },
+    "ygg.deps.findings": { "type": "integer", "minimum": 1 },
+    "ygg.deps.package": { "type": "string", "minLength": 1 },
+    "ygg.deps.from": { "type": "string", "minLength": 1 },
+    "ygg.deps.to": { "type": "string", "minLength": 1 },
+    "ygg.deps.stage": { "enum": ["canary", "rollout"] },
     "prev": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
-  }
+  },
+  "$defs": {
+    "tally": { "type": "string", "pattern": "^[0-9]+/[0-9]+$" }
+  },
+  "if": { "properties": { "event": { "const": "deps_checked" } }, "required": ["event"] },
+  "then": { "properties": { "ygg.verdict": { "enum": ["pass", "fail"] } } }
 }
