@@ -8,6 +8,7 @@ import (
 const gradeGraph = `
 name: graded
 version: 1.0.0
+schema: 1
 nodes:
   - { id: plan, kind: agent, role: planner, prompt: prompts/plan.md, scratch: true }
   - { id: build, kind: foreach, over: tasks, nodes: [ { id: impl, kind: loop, realm: leaf, role: implementer } ] }

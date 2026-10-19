@@ -17,10 +17,10 @@ type Umbrella struct {
 	Root       bool               `yaml:"root,omitempty"` // the top of the tree: a project, or a company umbrella holding projects
 	Owner      string             `yaml:"owner"`
 	Visibility gungnir.Visibility `yaml:"visibility"`
-	// Realm and RealmVersion pin the lead realm of the project this umbrella is: the realm leaf whose
-	// graph builds it (change realm-leaf-naming). Both are set, or neither.
-	Realm        string           `yaml:"realm,omitempty"`
-	RealmVersion string           `yaml:"realm_version,omitempty"`
+	// Graph and GraphVersion pin the graph pack that builds the project this umbrella is, such as
+	// software at 0.1.0 (change voluspa). Both are set, or neither.
+	Graph        string           `yaml:"graph,omitempty"`
+	GraphVersion string           `yaml:"graph_version,omitempty"`
 	Children     map[string]Child `yaml:"children,omitempty"` // path relative to the umbrella: child
 }
 
@@ -38,8 +38,8 @@ type Child struct {
 	Owner      string             `yaml:"owner"`
 	Visibility gungnir.Visibility `yaml:"visibility"`
 	// Realm and RealmVersion pin the realm leaf that provides this leaf's recipe: its stack layer,
-	// templates, implementer prompt and checks. Both are set, or neither; a leaf with neither uses the
-	// project's lead realm.
+	// templates, implementer prompt and checks. Both are set, or neither; a leaf with neither uses
+	// the graph pack's recipe, if it holds one.
 	Realm        string `yaml:"realm,omitempty"`
 	RealmVersion string `yaml:"realm_version,omitempty"`
 	// Consumes lists the sibling leaves this leaf calls, such as a web leaf's api. A leaf's sandbox gets
@@ -64,6 +64,9 @@ func LoadUmbrella(dir string) (*Umbrella, error) {
 // segment that starts with a dot (so never in .git or .factory); no child may sit inside another.
 func ParseUmbrella(file string, data []byte) (*Umbrella, error) {
 	var u Umbrella
+	if err := refuseTopLevelRealm(file, data); err != nil {
+		return nil, err
+	}
 	if err := parseYAML(file, "umbrella.schema.json", data, &u); err != nil {
 		return nil, err
 	}
@@ -88,10 +91,27 @@ func ParseUmbrella(file string, data []byte) (*Umbrella, error) {
 	return &u, nil
 }
 
+// refuseTopLevelRealm refuses an umbrella.yaml made before change voluspa, which pinned a realm for the whole project at
+// its top, with the way to pin a graph. It runs before the JSON schema, so the reason is not a bare
+// "additional property".
+func refuseTopLevelRealm(file string, data []byte) error {
+	doc, err := decodeYAML(file, data)
+	if err != nil {
+		return err
+	}
+	top, _ := doc.(map[string]any)
+	_, hasRealm := top["realm"]
+	_, hasVersion := top["realm_version"]
+	if hasRealm || hasVersion {
+		return fmt.Errorf("%s: the top-level realm and realm_version are gone (change voluspa): a project pins its graph as graph and graph_version, such as graph: software and graph_version: 0.1.0; each leaf keeps its realm and realm_version", file)
+	}
+	return nil
+}
+
 // checkRealms checks the realm pins and the consumers: a pin is a realm name and a version, together;
 // a leaf consumes other leaves of the umbrella, each once, and never in a ring.
 func (u *Umbrella) checkRealms(file string) error {
-	if err := checkPin(file, "the umbrella", u.Realm, u.RealmVersion); err != nil {
+	if err := checkGraphPin(file, u.Graph, u.GraphVersion); err != nil {
 		return err
 	}
 	for _, p := range u.Paths() {
@@ -161,16 +181,27 @@ func checkPin(file, where, realm, version string) error {
 	return nil
 }
 
-// Pin is a realm leaf at a version, and where the umbrella pins it: "." for the umbrella itself, or
-// a child's path.
+// checkGraphPin checks that a graph and its version are both set or both empty, and well formed.
+func checkGraphPin(file, graph, version string) error {
+	switch {
+	case graph == "" && version == "":
+		return nil
+	case graph == "" || version == "":
+		return fmt.Errorf("%s: the umbrella sets a graph or a graph version without the other; a pin is both", file)
+	case !gungnir.ValidGraph(graph):
+		return fmt.Errorf("%s: the umbrella: graph %q is not a graph name (lower case words joined by dashes)", file, graph)
+	case !gungnir.ValidVersion(version):
+		return fmt.Errorf("%s: the umbrella: graph version %q is not a version such as 1.2.3", file, version)
+	}
+	return nil
+}
+
+// Pin is a realm leaf at a version, and the child path of the leaf that pins it.
 type Pin struct{ Realm, Version, Where string }
 
-// Pins returns every realm pin of the umbrella: its own lead realm, then each child's, by path.
+// Pins returns every realm pin of the umbrella: each leaf's, by path. The graph pin is not one of them.
 func (u *Umbrella) Pins() []Pin {
 	var pins []Pin
-	if u.Realm != "" {
-		pins = append(pins, Pin{u.Realm, u.RealmVersion, "."})
-	}
 	for _, p := range u.Paths() {
 		if c := u.Children[p]; c.Realm != "" {
 			pins = append(pins, Pin{c.Realm, c.RealmVersion, p})

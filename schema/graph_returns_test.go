@@ -8,6 +8,7 @@ import (
 const returnsGraph = `
 name: returns
 version: 1.0.0
+schema: 1
 nodes:
   - { id: plan, kind: agent, role: planner, prompt: p.md, scratch: true }
   - { id: ready, kind: tasks, from: docs/tasks.md, back_to: plan, returns: 3 }
@@ -38,7 +39,7 @@ func TestARefusalCanGoBackIntoAnEarlierNodeAFewTimes(t *testing.T) {
 }
 
 func TestParseGraphRefusesBadReturns(t *testing.T) {
-	head := "name: g\nversion: 1.0.0\nnodes:\n"
+	head := "name: g\nversion: 1.0.0\nschema: 1\nnodes:\n"
 	agent := "  - { id: a, kind: agent, role: planner, prompt: p.md, repo: repos/app }\n"
 	const bySchema = "jsonschema validation failed"
 	cases := map[string]struct{ nodes, want string }{

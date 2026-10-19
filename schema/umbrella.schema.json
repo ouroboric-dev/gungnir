@@ -10,8 +10,8 @@
     "root": { "type": "boolean" },
     "owner": { "$ref": "#/$defs/owner" },
     "visibility": { "$ref": "#/$defs/visibility" },
-    "realm": { "type": "string" },
-    "realm_version": { "type": "string" },
+    "graph": { "type": "string" },
+    "graph_version": { "type": "string" },
     "children": {
       "type": "object",
       "propertyNames": { "pattern": "^[a-z0-9][a-z0-9._-]*(/[a-z0-9][a-z0-9._-]*)*$" },

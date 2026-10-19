@@ -2,13 +2,14 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/ouroboric-dev/gungnir/schema/graph.schema.json",
   "title": "graph.yaml",
-  "description": "A realm's graph: nodes run in order; a foreach node repeats its body for every ready task, in the leaf the task names, and the body's loop, merge and pointer nodes take their prompt and checks from the realm of that leaf (change realm-leaf-naming); a gate node is an approval point (spec §4.2, §7). Exec and agent nodes work in a repo of the project, merge nodes land a leaf's run branch through the merge gate (§4.5), pointer nodes move a leaf's pointer one level (§3.4), loop nodes run an implementer against a check ladder and reviewers, with a bounded number of attempts (§4.2, §4.6, §7.3).",
+  "description": "A graph pack's graph: nodes run in order; a foreach node repeats its body for every ready task, in the leaf the task names, and the body's loop, merge and pointer nodes take their prompt and checks from the realm of that leaf (change realm-leaf-naming); a gate node is an approval point (spec §4.2, §7). Exec and agent nodes work in a repo of the project, merge nodes land a leaf's run branch through the merge gate (§4.5), pointer nodes move a leaf's pointer one level (§3.4), loop nodes run an implementer against a check ladder and reviewers, with a bounded number of attempts (§4.2, §4.6, §7.3).",
   "type": "object",
   "additionalProperties": false,
-  "required": ["name", "version", "nodes"],
+  "required": ["name", "version", "schema", "nodes"],
   "properties": {
     "name": { "$ref": "#/$defs/id" },
     "version": { "$ref": "#/$defs/version" },
+    "schema": { "type": "integer", "minimum": 1, "description": "the graph schema version this file is written for; a Gungnir that reads a lower one refuses the graph" },
     "nodes": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/node" } }
   },
   "$defs": {

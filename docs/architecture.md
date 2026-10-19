@@ -17,10 +17,16 @@ The contract: Go interface types and JSON schemas for ledger events, `graph.yaml
 - Defines the schemas: `factory.yaml`, `graph.yaml`, `pack.yaml`, ledger events (with OpenTelemetry
   `gen_ai.*` field names) and findings.
 - Defines what a realm and a project say about each other (change realm-leaf-naming): a project's
-  `umbrella.yaml` pins its lead realm and, for each leaf, the realm that provides it and the leaves it
-  consumes; a build realm's `pack.yaml` offers a leaf recipe (template, implementer prompt, checks) and
+  `umbrella.yaml` pins its graph (`graph` and `graph_version`, both or neither, such as `software` at
+  `0.1.0`) and, for each leaf, the realm that provides it and the leaves it consumes. A top-level `realm` or
+  `realm_version` is refused with the way to pin a graph; a build realm's `pack.yaml` offers a leaf recipe (template, implementer prompt, checks) and
   sandbox services under the same names in every realm, and may have no graph; `leaves.yaml` is the
   spec stage's list of a product's leaves and their realms.
+- Gives a graph a schema version: `graph.yaml` states `schema: 1` (required, an integer of 1 or more;
+  `schema.GraphSchema`), and a Gungnir refuses a graph that needs a higher one. `factory.yaml` names the
+  store of graph packs with `graphs:` (`dir`, a clean absolute path, as `realms:` is). A graph pack is a
+  `pack.yaml` with a `graph`; `HoldsRecipe` (of `Pack`) says whether it also holds a recipe (`checks`, `leaf`,
+  `leaves`, `sandbox` or `services`), and only such a pack serves the leaves that pin no realm.
 - Defines the graph's nodes beyond the loop: `foreach` (a task shape repeated for every ready task, in the
   leaf and the realm of the task), scratch agents, `publish`, `tasks` and `init`, and `back_to` for a
   refusal that goes back into an earlier node.
@@ -44,7 +50,7 @@ The contract: Go interface types and JSON schemas for ledger events, `graph.yaml
   (`routing_index_built`, `pointer_contract_checked`) and of dependency checks (`deps_checked`,
   `deps_bump`). A reward of 0 is still written. A refusal has one reason: `retired`, `missing_suite`,
   `brief_changed`, `bad_manifest` or `bad_task`.
-- Defines the `routing` block of a lead realm's `pack.yaml` (`threshold`, and `bench`, the bench file from
+- Defines the `routing` block of a graph pack's `pack.yaml` (`threshold`, and `bench`, the bench file from
   the project root): the share of bench questions an index must answer right first before it ships. The
   hard approval point `pointer-contract` is in the schema of the gates.
 - Validates configs against those schemas.

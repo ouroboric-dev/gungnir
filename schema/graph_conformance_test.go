@@ -11,6 +11,7 @@ import (
 const conformanceGraph = `
 name: conformance
 version: 1.0.0
+schema: 1
 nodes:
   - { id: spec, kind: agent, role: planner, prompt: prompts/spec.md, scratch: true, inputs: [docs/1-product] }
   - { id: conformance, kind: agent, role: reviewer, prompt: prompts/conformance.md, scratch: true, reviews: spec, inputs: [docs/1-product] }

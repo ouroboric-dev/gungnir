@@ -6,11 +6,12 @@ import (
 	"testing"
 )
 
-// gallery is the shape of a lead realm's graph: stages that write documents, then a task shape that
+// gallery is the shape of a graph pack's graph: stages that write documents, then a task shape that
 // repeats for every ready task, in the leaf the task names.
 const galleryGraph = `
 name: gallery
 version: 1.0.0
+schema: 1
 nodes:
   - { id: plan, kind: agent, role: planner, prompt: prompts/plan.md, repo: repos/app }
   - { id: plan-gate, kind: gate, gate: plan }
@@ -59,7 +60,7 @@ func TestAGraphRepeatsATaskShapeForEveryReadyTask(t *testing.T) {
 }
 
 func TestParseGraphRefusesABadTaskShape(t *testing.T) {
-	head := "name: g\nversion: 1.0.0\nnodes:\n"
+	head := "name: g\nversion: 1.0.0\nschema: 1\nnodes:\n"
 	fe := func(body string) string {
 		return "  - id: tasks\n    kind: foreach\n    over: tasks\n    nodes:\n" + body
 	}
@@ -70,11 +71,11 @@ func TestParseGraphRefusesABadTaskShape(t *testing.T) {
 		"a foreach with no body":             {"  - { id: t, kind: foreach, over: tasks, nodes: [] }\n", bySchema},
 		"a foreach in a foreach":             {fe("      - id: inner\n        kind: foreach\n        over: tasks\n        nodes:\n" + strings.ReplaceAll(loop, "      -", "          -")), bySchema},
 		"a repo in the body":                 {fe("      - { id: implement, kind: loop, realm: leaf, role: implementer, repo: repos/app }\n"), bySchema},
-		"a loop of the lead realm":           {fe("      - { id: implement, kind: loop, role: implementer, prompt: p.md, checks: [vet] }\n"), bySchema},
+		"a loop of the graph pack":           {fe("      - { id: implement, kind: loop, role: implementer, prompt: p.md, checks: [vet] }\n"), bySchema},
 		"a leaf loop with its own prompt":    {fe("      - { id: implement, kind: loop, realm: leaf, role: implementer, prompt: p.md }\n"), bySchema},
 		"a leaf loop with its own checks":    {fe("      - { id: implement, kind: loop, realm: leaf, role: implementer, checks: [vet] }\n"), bySchema},
 		"a merge with its own checks":        {fe(loop + "      - { id: land, kind: merge, realm: leaf, checks: [unit] }\n"), bySchema},
-		"a merge of the lead realm":          {fe(loop + "      - { id: land, kind: merge, checks: [unit] }\n"), bySchema},
+		"a merge of the graph pack":          {fe(loop + "      - { id: land, kind: merge, checks: [unit] }\n"), bySchema},
 		"realm: lead":                        {fe("      - { id: implement, kind: loop, realm: lead, role: implementer }\n"), bySchema},
 		"realm: leaf outside a foreach":      {"  - { id: implement, kind: loop, realm: leaf, role: implementer, repo: repos/app }\n", bySchema},
 		"an id used in the body and outside": {fe(loop) + "  - { id: implement, kind: exec, run: [echo] }\n", "used twice"},

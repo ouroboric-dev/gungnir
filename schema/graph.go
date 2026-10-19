@@ -12,10 +12,15 @@ import (
 	"go.yaml.in/yaml/v3"
 )
 
-// Graph is a realm's graph.yaml. Nodes run in order.
+// GraphSchema is the graph schema version this Gungnir reads: the highest number a graph.yaml may state
+// in its schema field.
+const GraphSchema = 1
+
+// Graph is a graph pack's graph.yaml. Nodes run in order.
 type Graph struct {
 	Name    string `yaml:"name"`
 	Version string `yaml:"version"`
+	Schema  int    `yaml:"schema"` // the graph schema version, at least 1 and at most GraphSchema
 	Nodes   []Node `yaml:"nodes"`
 }
 
@@ -43,7 +48,7 @@ const (
 	MaxReturns     = 5
 )
 
-// RealmFrom says whose files a node uses: the lead realm's (the default) or the realm of the task's leaf.
+// RealmFrom says whose files a node uses: the graph pack's (the default) or the realm of the task's leaf.
 const (
 	RealmLead = "lead"
 	RealmLeaf = "leaf"
@@ -90,7 +95,7 @@ type Node struct {
 	RealmFrom string `yaml:"realm"` // loop, merge, pointer in a foreach body: "leaf", the realm of the task's leaf supplies the prompt and the checks
 
 	// Set by Odin when it expands a foreach for one task; never in a graph file.
-	Realm string `yaml:"-"` // the realm whose files this node's prompt and checks come from; empty is the lead realm
+	Realm string `yaml:"-"` // the realm whose files this node's prompt and checks come from; empty is the graph pack
 	Task  string `yaml:"-"` // the id of the task this node works for
 }
 
@@ -163,6 +168,9 @@ func ParseGraph(file string, data []byte) (*Graph, error) {
 	var g Graph
 	if err := parseYAML(file, "graph.schema.json", data, &g); err != nil {
 		return nil, err
+	}
+	if g.Schema > GraphSchema {
+		return nil, fmt.Errorf("%s: the graph needs graph schema %d, and this Gungnir reads schema %d at most", file, g.Schema, GraphSchema)
 	}
 	c := &graphCheck{file: file, seen: map[string]bool{}, keys: map[string]string{}}
 	if err := c.scope(g.Nodes, false); err != nil {
