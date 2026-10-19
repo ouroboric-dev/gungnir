@@ -28,3 +28,18 @@ func TestTheArchitecturePageNamesTheGraderContract(t *testing.T) {
 		}
 	}
 }
+
+// The architecture page names the graph's schema version, the project's graph pin, the graph store and the
+// test of a graph pack.
+func TestTheArchitecturePageNamesTheGraphPins(t *testing.T) {
+	b, err := os.ReadFile(filepath.Join("docs", "architecture.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	page := string(b)
+	for _, want := range []string{"`schema: 1`", "`graph_version`", "`graphs:`", "`HoldsRecipe`"} {
+		if !strings.Contains(page, want) {
+			t.Errorf("docs/architecture.md does not mention %q", want)
+		}
+	}
+}

@@ -42,7 +42,7 @@ type Repo struct {
 	// Realm and RealmVersion pin the realm leaf that provides the new leaf's recipe, and Consumes lists
 	// the sibling leaves it calls (paths from the parent umbrella). A remote records them with the
 	// leaf, in the same step, so a leaf never exists without its pin. A Repo with none uses the
-	// project's lead realm.
+	// graph pack's recipe, if it holds one.
 	Realm        string
 	RealmVersion string
 	Consumes     []string

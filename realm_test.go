@@ -50,6 +50,19 @@ func TestARepoCarriesItsRealmPin(t *testing.T) {
 	plain := ok
 	plain.Realm, plain.RealmVersion, plain.Consumes = "", "", nil
 	if err := plain.Validate(); err != nil {
-		t.Errorf("a repo with no pin = %v; it uses the lead realm", err)
+		t.Errorf("a repo with no pin = %v; it uses the graph pack", err)
+	}
+}
+
+func TestValidGraph(t *testing.T) {
+	for _, s := range []string{"software", "web-app", "a1"} {
+		if !ValidGraph(s) {
+			t.Errorf("ValidGraph(%q) = false", s)
+		}
+	}
+	for _, s := range []string{"", "Software", "web_app", "-web", "web-", "1web", "a/b"} {
+		if ValidGraph(s) {
+			t.Errorf("ValidGraph(%q) = true", s)
+		}
 	}
 }

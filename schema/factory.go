@@ -19,7 +19,8 @@ type Factory struct {
 	Privacy string                  `yaml:"privacy"`
 	Sandbox *Sandbox                `yaml:"sandbox"` // required when a role runs a real agent (spec §6)
 	Skills  Skills                  `yaml:"skills"`
-	Realms  *Realms                 `yaml:"realms"` // where the realm leaves are, so --realm can name one
+	Realms  *Realms                 `yaml:"realms"` // where the realm leaves are, so a leaf's pinned realm can be found
+	Graphs  *Graphs                 `yaml:"graphs"` // where the graph packs are, so --graph can name one
 	Grader  *Grader                 `yaml:"grader"` // where the benchmark tasks and the hidden suites are, and the limits of a grading run (spec §11)
 }
 
@@ -37,6 +38,12 @@ type Grader struct {
 // the yggdrasil umbrella (<dir>/midgard-react/pack.yaml). A project pins the version it needs, and a
 // run uses the checkout only if it is at that version (change realm-leaf-naming).
 type Realms struct {
+	Dir string `yaml:"dir"`
+}
+
+// Graphs says where the operator keeps the graph packs: a folder with one pack per graph, such as the
+// voluspa leaf (<dir>/software/pack.yaml). A run finds its graph there by name (change voluspa).
+type Graphs struct {
 	Dir string `yaml:"dir"`
 }
 
@@ -250,6 +257,9 @@ func (f *Factory) checkSandbox() error {
 	}
 	if r := f.Realms; r != nil && (!filepath.IsAbs(r.Dir) || filepath.Clean(r.Dir) != r.Dir || r.Dir == "/") {
 		return fmt.Errorf("realms.dir %q must be a clean, absolute path, and not the root", r.Dir)
+	}
+	if g := f.Graphs; g != nil && (!filepath.IsAbs(g.Dir) || filepath.Clean(g.Dir) != g.Dir || g.Dir == "/") {
+		return fmt.Errorf("graphs.dir %q must be a clean, absolute path, and not the root", g.Dir)
 	}
 	if g := f.Grader; g != nil {
 		if err := g.check(); err != nil {

@@ -6,11 +6,12 @@ import (
 	"testing"
 )
 
-// stagesGraph is the front of a lead realm's graph: agents that write documents in a scratch workspace,
+// stagesGraph is the front of a graph pack's graph: agents that write documents in a scratch workspace,
 // Odin publishing them into the project once approved, the plan read into tasks, and the leaves created.
 const stagesGraph = `
 name: stages
 version: 1.0.0
+schema: 1
 nodes:
   - { id: design, kind: agent, role: planner, prompt: prompts/design.md, scratch: true }
   - { id: design-gate, kind: gate, gate: design }
@@ -48,7 +49,7 @@ func TestAGraphWritesDocumentsInAScratchWorkspaceAndPublishesThemIntoTheProject(
 }
 
 func TestParseGraphRefusesBadStageNodes(t *testing.T) {
-	head := "name: g\nversion: 1.0.0\nnodes:\n"
+	head := "name: g\nversion: 1.0.0\nschema: 1\nnodes:\n"
 	scratch := "  - { id: s, kind: agent, role: planner, prompt: p.md, scratch: true }\n"
 	const bySchema = "jsonschema validation failed"
 	cases := map[string]struct{ nodes, want string }{

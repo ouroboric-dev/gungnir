@@ -12,10 +12,10 @@ import (
 type Pack struct {
 	Name    string              `yaml:"name"`
 	Version string              `yaml:"version"`
-	Graph   string              `yaml:"graph"`   // relative to the pack; empty for a realm that never leads a run
+	Graph   string              `yaml:"graph"`   // relative to the pack; empty for a realm that offers no graph
 	Roles   map[string]PackRole `yaml:"roles"`   // default roles; factory.yaml's roles are used from Phase 1
 	Checks  map[string][]string `yaml:"checks"`  // check commands: merge and pointer nodes run them from Phase 2
-	Leaves  map[string]PackLeaf `yaml:"leaves"`  // the default leaves of the lead realm's graph, by path relative to the project
+	Leaves  map[string]PackLeaf `yaml:"leaves"`  // the default leaves of the graph, by path relative to the project
 	Sandbox *PackSandbox        `yaml:"sandbox"` // the realm's stack layer and the hosts its commands reach (spec §6.1)
 
 	// Leaf is what a build realm offers every leaf it provides, under the same names in every realm
@@ -30,10 +30,17 @@ type Pack struct {
 	Routing *PackRouting `yaml:"routing"`
 }
 
+// HoldsRecipe reports whether the pack is a build recipe as well as, or instead of, a graph: it has checks,
+// a leaf recipe, default leaves, a sandbox or services. A graph pack that holds one serves the leaves that
+// pin no realm; a pack of a graph alone (and its routing block) does not.
+func (p *Pack) HoldsRecipe() bool {
+	return len(p.Checks) > 0 || p.Leaf != nil || len(p.Leaves) > 0 || p.Sandbox != nil || len(p.Services) > 0
+}
+
 // DefaultBenchPath is where a project keeps its routing bench, from the project root.
 const DefaultBenchPath = ".ygg/routing-bench.yaml"
 
-// PackRouting is the routing block of a lead realm's pack: the right-first score an index needs to ship.
+// PackRouting is the routing block of a graph pack: the right-first score an index needs to ship.
 type PackRouting struct {
 	Threshold float64 `yaml:"threshold"` // above 0 and at most 1: the share of the bench's questions the index answers right first
 	Bench     string  `yaml:"bench"`     // the bench file, from the project root; DefaultBenchPath when empty
@@ -85,7 +92,7 @@ type PackSandbox struct {
 	Target string   `yaml:"target"` // with build: the stage of the Containerfile this stack is; empty is its last stage
 	Egress []string `yaml:"egress"` // host names, such as package registries, opened on port 443 beside the model APIs
 	// Acceptance is the stack of the sandbox that holds a snapshot of the whole project, where a pointer
-	// move's acceptance checks run: a lead realm's, in either form. It is empty for a realm that has none.
+	// move's acceptance checks run: a leaf realm's, in either form. It is empty for a realm that has none.
 	Acceptance *PackStack `yaml:"acceptance"`
 }
 

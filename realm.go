@@ -11,5 +11,8 @@ var (
 // midgard-react (change realm-leaf-naming).
 func ValidRealm(s string) bool { return realmName.MatchString(s) }
 
+// ValidGraph reports whether s names a graph: lower case words joined by dashes, such as software.
+func ValidGraph(s string) bool { return realmName.MatchString(s) }
+
 // ValidVersion reports whether s is a version of the form 1.2.3.
 func ValidVersion(s string) bool { return realmVersion.MatchString(s) }
