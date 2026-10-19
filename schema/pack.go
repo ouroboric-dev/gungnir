@@ -12,7 +12,7 @@ import (
 type Pack struct {
 	Name    string              `yaml:"name"`
 	Version string              `yaml:"version"`
-	Graph   string              `yaml:"graph"`   // relative to the pack; empty for a realm that never leads a run
+	Graph   string              `yaml:"graph"`   // relative to the pack; empty for a realm that offers no graph
 	Roles   map[string]PackRole `yaml:"roles"`   // default roles; factory.yaml's roles are used from Phase 1
 	Checks  map[string][]string `yaml:"checks"`  // check commands: merge and pointer nodes run them from Phase 2
 	Leaves  map[string]PackLeaf `yaml:"leaves"`  // the default leaves of the graph, by path relative to the project

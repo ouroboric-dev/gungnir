@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/ouroboric-dev/gungnir/schema/pack.schema.json",
   "title": "pack.yaml",
-  "description": "A realm pack: its name, version, graph (when it can lead a run), default roles, check commands, the leaf recipe a build realm offers, its sandbox services, and the default leaves its graph works in (spec §9.4; changes remote-creates-repos and realm-leaf-naming).",
+  "description": "A realm pack: its name, version, graph (when it is a graph pack), default roles, check commands, the leaf recipe a build realm offers, its sandbox services, and the default leaves its graph works in (spec §9.4; changes remote-creates-repos and realm-leaf-naming).",
   "type": "object",
   "additionalProperties": false,
   "required": ["name", "version"],
@@ -12,7 +12,7 @@
   "properties": {
     "name": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
     "version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" },
-    "graph": { "type": "string", "minLength": 1, "description": "the realm's graph, relative to the pack; a realm that never leads a run has none" },
+    "graph": { "type": "string", "minLength": 1, "description": "the pack's graph, relative to the pack; a realm that offers no graph has none" },
     "roles": {
       "type": "object",
       "propertyNames": { "pattern": "^[a-z][a-z0-9-]*$" },

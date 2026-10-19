@@ -1,6 +1,7 @@
 package schema
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -50,7 +51,6 @@ const (
 
 // RealmFrom says whose files a node uses: the graph pack's (the default) or the realm of the task's leaf.
 const (
-	RealmLead = "lead"
 	RealmLeaf = "leaf"
 )
 
@@ -166,11 +166,11 @@ func LoadGraph(path string) (*Graph, error) {
 // names no repo: the task's leaf is its repo.
 func ParseGraph(file string, data []byte) (*Graph, error) {
 	var g Graph
-	if err := parseYAML(file, "graph.schema.json", data, &g); err != nil {
+	if err := refuseNewerSchema(file, data); err != nil {
 		return nil, err
 	}
-	if g.Schema > GraphSchema {
-		return nil, fmt.Errorf("%s: the graph needs graph schema %d, and this Gungnir reads schema %d at most", file, g.Schema, GraphSchema)
+	if err := parseYAML(file, "graph.schema.json", data, &g); err != nil {
+		return nil, err
 	}
 	c := &graphCheck{file: file, seen: map[string]bool{}, keys: map[string]string{}}
 	if err := c.scope(g.Nodes, false); err != nil {
@@ -187,6 +187,23 @@ func ParseGraph(file string, data []byte) (*Graph, error) {
 		}
 	}
 	return &g, nil
+}
+
+// refuseNewerSchema refuses a graph that states a schema above GraphSchema, before the JSON schema runs: a
+// graph of a newer schema uses what this one does not know, and the reason is the version, not a dump of
+// every field it fails on.
+func refuseNewerSchema(file string, data []byte) error {
+	doc, err := decodeYAML(file, data)
+	if err != nil {
+		return err
+	}
+	top, _ := doc.(map[string]any)
+	if n, ok := top["schema"].(json.Number); ok {
+		if v, err := n.Int64(); err == nil && v > GraphSchema {
+			return fmt.Errorf("%s: the graph needs graph schema %d, and this Gungnir reads schema %d at most", file, v, GraphSchema)
+		}
+	}
+	return nil
 }
 
 // graphCheck holds what ParseGraph learns across scopes: every node id, and the reviewer session keys.

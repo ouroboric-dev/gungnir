@@ -56,7 +56,7 @@
       "type": "object",
       "additionalProperties": false,
       "required": ["dir"],
-      "properties": { "dir": { "type": "string", "minLength": 1, "description": "an absolute folder with one checkout of each realm leaf, so --realm midgard-react finds <dir>/midgard-react" } }
+      "properties": { "dir": { "type": "string", "minLength": 1, "description": "an absolute folder with one checkout of each realm leaf, so a leaf pinned to midgard-react finds <dir>/midgard-react" } }
     },
     "graphs": {
       "type": "object",

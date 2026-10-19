@@ -76,7 +76,7 @@ func TestParseGraphRefusesABadTaskShape(t *testing.T) {
 		"a leaf loop with its own checks":    {fe("      - { id: implement, kind: loop, realm: leaf, role: implementer, checks: [vet] }\n"), bySchema},
 		"a merge with its own checks":        {fe(loop + "      - { id: land, kind: merge, realm: leaf, checks: [unit] }\n"), bySchema},
 		"a merge of the graph pack":          {fe(loop + "      - { id: land, kind: merge, checks: [unit] }\n"), bySchema},
-		"realm: lead":                        {fe("      - { id: implement, kind: loop, realm: lead, role: implementer }\n"), bySchema},
+		"realm: lead (the value is gone)":    {fe("      - { id: implement, kind: loop, realm: lead, role: implementer }\n"), bySchema},
 		"realm: leaf outside a foreach":      {"  - { id: implement, kind: loop, realm: leaf, role: implementer, repo: repos/app }\n", bySchema},
 		"an id used in the body and outside": {fe(loop) + "  - { id: implement, kind: exec, run: [echo] }\n", "used twice"},
 		"a gate in the body with no loop":    {fe("      - { id: g, kind: gate, gate: feature }\n"), "no agent or loop node before it"},

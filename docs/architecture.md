@@ -19,8 +19,8 @@ The contract: Go interface types and JSON schemas for ledger events, `graph.yaml
 - Defines what a realm and a project say about each other (change realm-leaf-naming): a project's
   `umbrella.yaml` pins its graph (`graph` and `graph_version`, both or neither, such as `software` at
   `0.1.0`) and, for each leaf, the realm that provides it and the leaves it consumes. A top-level `realm` or
-  `realm_version` is refused with the way to pin a graph; a build realm's `pack.yaml` offers a leaf recipe (template, implementer prompt, checks) and
-  sandbox services under the same names in every realm, and may have no graph; `leaves.yaml` is the
+  `realm_version` is refused with the way to pin a graph. A build realm's `pack.yaml` offers a leaf recipe
+  (template, implementer prompt, checks) and sandbox services under the same names in every realm, and may have no graph; `leaves.yaml` is the
   spec stage's list of a product's leaves and their realms.
 - Gives a graph a schema version: `graph.yaml` states `schema: 1` (required, an integer of 1 or more;
   `schema.GraphSchema`), and a Gungnir refuses a graph that needs a higher one. `factory.yaml` names the

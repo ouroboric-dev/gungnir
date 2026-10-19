@@ -16,6 +16,9 @@ func TestAGraphPackHoldsNoRecipe(t *testing.T) {
 	if load(base).HoldsRecipe() || load(base+routing).HoldsRecipe() {
 		t.Error("a pack of a graph (and routing) holds a recipe")
 	}
+	if !(&Pack{Leaf: &PackRecipe{}}).HoldsRecipe() {
+		t.Error("a pack with a leaf recipe alone does not hold a recipe")
+	}
 	for name, add := range map[string]string{
 		"checks":   "checks:\n  unit: [go, test]\n",
 		"leaf":     "checks:\n  unit: [go, test]\nleaf:\n  description: x\n  template: templates/api\n  first_commit: [LICENSE]\n  implementer: prompts/implementer.md\n  checks: [unit]\n",

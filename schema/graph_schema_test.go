@@ -19,12 +19,22 @@ func TestAGraphStatesItsSchemaVersion(t *testing.T) {
 		"a string schema": schemaHead + "schema: \"1\"\n" + schemaTail,
 	} {
 		_, err := ParseGraph("graph.yaml", []byte(y))
-		if err == nil || !strings.Contains(err.Error(), "schema") {
+		if err == nil || !strings.Contains(err.Error(), "/schema") {
 			t.Errorf("%s: ParseGraph() = %v, want an error naming schema", name, err)
 		}
 	}
 	_, err = ParseGraph("graph.yaml", []byte(schemaHead+"schema: 2\n"+schemaTail))
 	if err == nil || !strings.Contains(err.Error(), "needs graph schema 2") {
 		t.Errorf("schema 2: ParseGraph() = %v, want an error with %q", err, "needs graph schema 2")
+	}
+	// A real schema 2 graph uses what schema 1 does not know; the refusal still names the schema.
+	for name, y := range map[string]string{
+		"an unknown top-level key": schemaHead + "schema: 2\nmodels: [x]\n" + schemaTail,
+		"an unknown node kind":     schemaHead + "schema: 2\nnodes:\n  - { id: a, kind: fanout, role: planner }\n",
+	} {
+		_, err := ParseGraph("graph.yaml", []byte(y))
+		if err == nil || !strings.Contains(err.Error(), "needs graph schema 2") || strings.Contains(err.Error(), "jsonschema") {
+			t.Errorf("%s: ParseGraph() = %v, want only %q", name, err, "needs graph schema 2")
+		}
 	}
 }
