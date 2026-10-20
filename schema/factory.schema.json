@@ -91,6 +91,7 @@
         "agent": { "enum": ["claude-code", "opencode", "scripted"] },
         "model": { "type": "string", "minLength": 1 },
         "script": { "type": "string", "minLength": 1 },
+        "reasoning": { "enum": ["low", "medium", "high", "off"], "description": "the reasoning effort the adapter asks of the model on every request; absent means high; claude-code and scripted roles ignore it" },
         "price": {
           "type": "object",
           "additionalProperties": false,

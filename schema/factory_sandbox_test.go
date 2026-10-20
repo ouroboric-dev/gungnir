@@ -70,3 +70,39 @@ func TestRolePrice(t *testing.T) {
 		}
 	}
 }
+
+func TestRoleReasoning(t *testing.T) {
+	caps := "budget:\n  per_run: { tokens: 1, turns: 1, usd: 1 }\n  per_day: { tokens: 1, turns: 1, usd: 1 }\n"
+	load := func(setting string) (*Factory, error) {
+		roles := "roles:\n  reviewer: { agent: opencode, model: openrouter/x/y" + setting + " }\n"
+		return ParseFactory("factory.yaml", []byte(roles+caps+sandboxBlock))
+	}
+	for _, v := range []string{"low", "medium", "high", "off"} {
+		f, err := load(", reasoning: " + v)
+		if err != nil || f.Roles["reviewer"].Reasoning != v {
+			t.Errorf("reasoning %s: ParseFactory() = %+v, %v", v, f, err)
+		}
+	}
+	f, err := load("")
+	if err != nil || f.Roles["reviewer"].Reasoning != "" {
+		t.Errorf("unset: ParseFactory() = %+v, %v, want an empty Reasoning", f, err)
+	}
+	// Every agent type accepts the setting, as it accepts price.
+	for _, role := range []string{"{ agent: claude-code, model: m, reasoning: low }", "{ agent: scripted, model: m, script: s.sh, reasoning: off }"} {
+		if _, err := ParseFactory("factory.yaml", []byte("roles:\n  r: "+role+"\n"+caps+sandboxBlock)); err != nil {
+			t.Errorf("%s: ParseFactory() = %v", role, err)
+		}
+	}
+	for name, v := range map[string]string{"max": "max", "an empty string": `""`, "a number": "3", "a boolean": "true", "a wrong case": "High"} {
+		_, err := load(", reasoning: " + v)
+		if err == nil || !strings.Contains(err.Error(), "reasoning") {
+			t.Errorf("%s: ParseFactory() = %v, want an error naming reasoning", name, err)
+		}
+	}
+	_, err = load(", reasoning: max")
+	for _, want := range []string{"low", "medium", "high", "off"} {
+		if err == nil || !strings.Contains(err.Error(), want) {
+			t.Errorf("error for max = %v, want it to list %q", err, want)
+		}
+	}
+}

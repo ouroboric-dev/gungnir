@@ -67,10 +67,11 @@ type Skills struct {
 
 // Role maps a role to an agent adapter and a model (spec §5).
 type Role struct {
-	Agent  string `yaml:"agent"`
-	Model  string `yaml:"model"`
-	Script string `yaml:"script"` // scripted adapter only: the script, relative to factory.yaml
-	Price  *Price `yaml:"price"`  // optional: dollars per million tokens, for a tool that reports no cost of its own (spec §5)
+	Agent     string `yaml:"agent"`
+	Model     string `yaml:"model"`
+	Script    string `yaml:"script"`    // scripted adapter only: the script, relative to factory.yaml
+	Price     *Price `yaml:"price"`     // optional: dollars per million tokens, for a tool that reports no cost of its own (spec §5)
+	Reasoning string `yaml:"reasoning"` // optional: low, medium, high or off; "" means unset, and the adapter applies high (spec §5)
 }
 
 // Price is a model's price in dollars per million tokens.
