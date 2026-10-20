@@ -39,13 +39,14 @@ func ParseFinding(data []byte) (gungnir.Finding, error) {
 	return f, f.Validate()
 }
 
-// ParseReport parses a reviewer's answer: one JSON document with a findings list, which may be wrapped
-// in a single code fence and in nothing else. Prose, a second document, a finding without a location, a
-// fixed finding without proof and an id used twice are errors, never an empty report: an answer that
-// can't be read doesn't count as a pass (spec §4.6).
+// ParseReport parses a reviewer's answer: prose may come first, then one JSON document with a findings
+// list, bare or in a single code fence, as the last thing in the answer. The prose is ignored. Text after
+// the report, a second fence or document, an unclosed fence, an answer with no document, a finding
+// without a location, a fixed finding without proof and an id used twice are errors, never an empty
+// report: an answer that can't be read doesn't count as a pass (spec §4.6).
 func ParseReport(answer []byte) (gungnir.Report, error) {
 	var r gungnir.Report
-	data, err := unfence(string(answer))
+	data, err := lastDocument(string(answer))
 	if err != nil {
 		return r, err
 	}
@@ -72,6 +73,63 @@ func ParseReport(answer []byte) (gungnir.Report, error) {
 		seen[f.ID] = true
 	}
 	return r, nil
+}
+
+// lastDocument returns the report at the end of an answer: a bare JSON document or one in a single code
+// fence, with any prose before it. It refuses text after the document, a second fence or document, an
+// unclosed fence and an answer with no document.
+func lastDocument(answer string) (string, error) {
+	s := strings.TrimSpace(answer)
+	var prose, data string
+	switch n := strings.Count(s, "```"); {
+	case n == 0:
+		start := -1
+		for i := 0; i < len(s); i++ {
+			if s[i] == '{' && json.Valid([]byte(s[i:])) {
+				start = i
+				break
+			}
+		}
+		if start < 0 {
+			return "", errors.New("report: the answer does not end with a JSON document")
+		}
+		// The report is the first tail that parses; a complete document before it is a second document.
+		prose, data = s[:start], s[start:]
+	case n == 1:
+		return "", errors.New("report: a code fence is not closed")
+	case n > 2:
+		return "", errors.New("report: more than one code fence")
+	default:
+		if !strings.HasSuffix(s, "```") {
+			return "", errors.New("report: text after the report")
+		}
+		open := strings.Index(s, "```")
+		prose = s[:open]
+		_, body, ok := strings.Cut(s[open:], "\n")
+		if !ok {
+			return "", errors.New("report: a code fence is not closed")
+		}
+		data = strings.TrimSpace(strings.TrimSuffix(strings.TrimSpace(body), "```"))
+	}
+	if containsDocument(prose) {
+		return "", errors.New("report: more than one document")
+	}
+	return data, nil
+}
+
+// containsDocument reports whether text holds a complete JSON object. Braces in ordinary prose don't
+// count: they don't parse.
+func containsDocument(text string) bool {
+	for i := 0; i < len(text); i++ {
+		if text[i] != '{' {
+			continue
+		}
+		var v json.RawMessage
+		if json.NewDecoder(strings.NewReader(text[i:])).Decode(&v) == nil {
+			return true
+		}
+	}
+	return false
 }
 
 // unfence returns the JSON of an answer that is a bare document, or one document in one code fence.
