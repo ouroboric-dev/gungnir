@@ -46,7 +46,7 @@ func ParseFinding(data []byte) (gungnir.Finding, error) {
 // report: an answer that can't be read doesn't count as a pass (spec §4.6).
 func ParseReport(answer []byte) (gungnir.Report, error) {
 	var r gungnir.Report
-	data, err := lastDocument(string(answer))
+	data, err := lastDocument("report", string(answer))
 	if err != nil {
 		return r, err
 	}
@@ -75,10 +75,10 @@ func ParseReport(answer []byte) (gungnir.Report, error) {
 	return r, nil
 }
 
-// lastDocument returns the report at the end of an answer: a bare JSON document or one in a single code
+// lastDocument returns the document at the end of an answer, named what in errors: a bare JSON document or one in a single code
 // fence, with any prose before it. It refuses text after the document, a second fence or document, an
 // unclosed fence and an answer with no document.
-func lastDocument(answer string) (string, error) {
+func lastDocument(what, answer string) (string, error) {
 	s := strings.TrimSpace(answer)
 	var prose, data string
 	switch n := strings.Count(s, "```"); {
@@ -91,28 +91,28 @@ func lastDocument(answer string) (string, error) {
 			}
 		}
 		if start < 0 {
-			return "", errors.New("report: the answer does not end with a JSON document")
+			return "", fmt.Errorf("%s: the answer does not end with a JSON document", what)
 		}
 		// The report is the first tail that parses; a complete document before it is a second document.
 		prose, data = s[:start], s[start:]
 	case n == 1:
-		return "", errors.New("report: a code fence is not closed")
+		return "", fmt.Errorf("%s: a code fence is not closed", what)
 	case n > 2:
-		return "", errors.New("report: more than one code fence")
+		return "", fmt.Errorf("%s: more than one code fence", what)
 	default:
 		if !strings.HasSuffix(s, "```") {
-			return "", errors.New("report: text after the report")
+			return "", fmt.Errorf("%s: text after the report", what)
 		}
 		open := strings.Index(s, "```")
 		prose = s[:open]
 		_, body, ok := strings.Cut(s[open:], "\n")
 		if !ok {
-			return "", errors.New("report: a code fence is not closed")
+			return "", fmt.Errorf("%s: a code fence is not closed", what)
 		}
 		data = strings.TrimSpace(strings.TrimSuffix(strings.TrimSpace(body), "```"))
 	}
 	if containsDocument(prose) {
-		return "", errors.New("report: more than one document")
+		return "", fmt.Errorf("%s: more than one document", what)
 	}
 	return data, nil
 }
@@ -175,4 +175,40 @@ func ParseConformance(answer []byte) (gungnir.Conformance, error) {
 		return gungnir.Conformance{}, fmt.Errorf("conformance: more than one document")
 	}
 	return c, nil
+}
+
+// ParseDisputes parses an implementer's dispute document, framed exactly like a report: prose may come
+// first, then one JSON document with a disputes list, bare or in a single code fence, as the last thing in
+// the answer. Every dispute needs a finding id, a check, a test and evidence, none empty or over its limit.
+// A field left out, an unknown field, a second document, text after it and an id used twice are errors:
+// a dispute that can't be read changes no finding (change disputed-findings).
+func ParseDisputes(answer []byte) (gungnir.Disputes, error) {
+	var d gungnir.Disputes
+	data, err := lastDocument("disputes", string(answer))
+	if err != nil {
+		return d, err
+	}
+	doc, err := jsonschema.UnmarshalJSON(strings.NewReader(data))
+	if err != nil {
+		return d, fmt.Errorf("disputes: %w", err)
+	}
+	if err := validate("disputes", "disputes.schema.json", doc); err != nil {
+		return d, err
+	}
+	dec := json.NewDecoder(strings.NewReader(data))
+	dec.DisallowUnknownFields()
+	if err := dec.Decode(&d); err != nil {
+		return gungnir.Disputes{}, fmt.Errorf("disputes: %w", err)
+	}
+	seen := map[string]bool{}
+	for _, x := range d.Disputes {
+		if err := x.Validate(); err != nil {
+			return gungnir.Disputes{}, fmt.Errorf("disputes: dispute %q: %w", x.ID, err)
+		}
+		if seen[x.ID] {
+			return gungnir.Disputes{}, fmt.Errorf("disputes: finding id %q is disputed twice", x.ID)
+		}
+		seen[x.ID] = true
+	}
+	return d, nil
 }

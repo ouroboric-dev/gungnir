@@ -33,6 +33,9 @@ const (
 	FindingOpen     FindingStatus = "open"
 	FindingFixed    FindingStatus = "fixed"
 	FindingDisputed FindingStatus = "disputed"
+	// FindingOverruled closes a finding because the implementer's dispute of it held: a named check passed
+	// and printed the test. Like a fixed finding it needs proof, and it is not open.
+	FindingOverruled FindingStatus = "overruled"
 )
 
 // Finding is what a check or a reviewer reports (spec §4.6).
@@ -42,7 +45,7 @@ type Finding struct {
 	Severity Severity      `json:"severity"` // blocker, major or minor
 	Location string        `json:"location"` // file:line or file:line-line
 	Claim    string        `json:"claim"`    // what is wrong
-	Status   FindingStatus `json:"status"`   // open, fixed or disputed
+	Status   FindingStatus `json:"status"`   // open, fixed, disputed or overruled
 	Proof    string        `json:"proof,omitempty"`
 }
 
@@ -74,12 +77,12 @@ func (f Finding) Validate() error {
 	}
 	switch f.Status {
 	case FindingOpen, FindingDisputed:
-	case FindingFixed:
+	case FindingFixed, FindingOverruled:
 		if f.Proof == "" {
-			errs = append(errs, errors.New("a fixed finding needs proof"))
+			errs = append(errs, fmt.Errorf("a %s finding needs proof", f.Status))
 		}
 	default:
-		errs = append(errs, fmt.Errorf("status %q is not open, fixed or disputed", f.Status))
+		errs = append(errs, fmt.Errorf("status %q is not open, fixed, disputed or overruled", f.Status))
 	}
 	return errors.Join(errs...)
 }
@@ -87,4 +90,44 @@ func (f Finding) Validate() error {
 // Report is a reviewer's whole answer: every finding it holds open or closes (spec §4.6).
 type Report struct {
 	Findings []Finding `json:"findings"`
+}
+
+// The most characters each text field of a dispute may hold, and the most disputes one answer may hold.
+// The evidence goes into the overruled finding's proof, with the check run, so it is shorter than MaxProof.
+const (
+	MaxDisputeCheck = 100
+	MaxDisputeTest  = 300
+	MaxEvidence     = 1500
+	MaxDisputes     = 200
+)
+
+// Dispute is an implementer's claim that an open finding is wrong, settled by a check of the loop: the
+// check named must have passed in the attempt, with the test id in its output (change disputed-findings).
+type Dispute struct {
+	ID       string `json:"id"`       // the open finding's id
+	Check    string `json:"check"`    // the name of a check the loop runs
+	Test     string `json:"test"`     // a test id the check's output must name
+	Evidence string `json:"evidence"` // what the test showed, and where
+}
+
+// Disputes is an implementer's whole dispute document.
+type Disputes struct {
+	Disputes []Dispute `json:"disputes"`
+}
+
+// Validate refuses a dispute with a missing or over-long field.
+func (d Dispute) Validate() error {
+	var errs []error
+	for _, c := range []struct {
+		name string
+		text string
+		max  int
+	}{{"id", d.ID, MaxID}, {"check", d.Check, MaxDisputeCheck}, {"test", d.Test, MaxDisputeTest}, {"evidence", d.Evidence, MaxEvidence}} {
+		if c.text == "" {
+			errs = append(errs, fmt.Errorf("a dispute needs a %s", c.name))
+		} else if n := utf8.RuneCountInString(c.text); n > c.max {
+			errs = append(errs, fmt.Errorf("the %s is %d characters long, over the limit of %d", c.name, n, c.max))
+		}
+	}
+	return errors.Join(errs...)
 }
