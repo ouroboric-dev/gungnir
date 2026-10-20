@@ -33,11 +33,12 @@ const (
 	EventSandboxUp       EventName = "sandbox_up"   // a leaf's sandbox started (spec §6)
 	EventSandboxDown     EventName = "sandbox_down" // a leaf's sandbox stopped
 
-	EventRetry           EventName = "retry"            // a transient failure; the session runs again after a backoff (spec §12)
-	EventRunPaused       EventName = "run_paused"       // the provider's quota is used up; the run waits, resumable (spec §12)
-	EventFindingRaised   EventName = "finding_raised"   // a check or reviewer reported a finding (spec §4.6)
-	EventFindingClosed   EventName = "finding_closed"   // its source confirmed the fix, with proof
-	EventFindingReopened EventName = "finding_reopened" // a closed finding was reported again
+	EventRetry            EventName = "retry"             // a transient failure; the session runs again after a backoff (spec §12)
+	EventRunPaused        EventName = "run_paused"        // the provider's quota is used up; the run waits, resumable (spec §12)
+	EventFindingRaised    EventName = "finding_raised"    // a check or reviewer reported a finding (spec §4.6)
+	EventFindingClosed    EventName = "finding_closed"    // its source confirmed the fix, with proof
+	EventFindingReopened  EventName = "finding_reopened"  // a closed finding was reported again
+	EventFindingOverruled EventName = "finding_overruled" // a dispute held: a named check passed and printed the test (change disputed-findings)
 
 	EventRealmLoaded   EventName = "realm_loaded"   // a realm leaf was loaded at the version the project pins (change realm-leaf-naming)
 	EventDocsPublished EventName = "docs_published" // Odin copied a scratch agent's documents into the project and committed them
@@ -65,7 +66,7 @@ func Events() []EventName {
 		EventGateApproved, EventGateRejected, EventGateAutoPassed, EventLoopAttempt, EventEscalation,
 		EventRoutingLookup, EventBudgetWarning, EventPolicyViolation, EventPointerMoved,
 		EventModeChanged, EventConfigChanged, EventRepoCreated, EventSandboxUp, EventSandboxDown,
-		EventRetry, EventRunPaused, EventFindingRaised, EventFindingClosed, EventFindingReopened,
+		EventRetry, EventRunPaused, EventFindingRaised, EventFindingClosed, EventFindingReopened, EventFindingOverruled,
 		EventRealmLoaded, EventDocsPublished, EventTasksReady, EventNodeReturned, EventTaskStarted, EventTaskDone,
 		EventTaskBlocked, EventConformanceChecked, EventGradeStarted, EventGradeFinished, EventGradeRefused,
 		EventRoutingIndexBuilt, EventPointerContractChecked, EventDepsChecked, EventDepsBump}

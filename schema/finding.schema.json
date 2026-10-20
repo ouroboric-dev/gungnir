@@ -12,9 +12,9 @@
     "severity": { "enum": ["blocker", "major", "minor"] },
     "location": { "type": "string", "maxLength": 300, "pattern": "^[^\\s:]+:[0-9]+(-[0-9]+)?$" },
     "claim": { "type": "string", "minLength": 1, "maxLength": 4000 },
-    "status": { "enum": ["open", "fixed", "disputed"] },
+    "status": { "enum": ["open", "fixed", "disputed", "overruled"] },
     "proof": { "type": "string", "minLength": 1, "maxLength": 2000 }
   },
-  "if": { "properties": { "status": { "const": "fixed" } } },
+  "if": { "properties": { "status": { "enum": ["fixed", "overruled"] } } },
   "then": { "required": ["proof"] }
 }
