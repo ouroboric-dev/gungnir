@@ -102,12 +102,13 @@ type Node struct {
 
 // Reviewer is a read-only agent that reviews a loop's work and reports typed findings (spec §4.6, §9.5).
 type Reviewer struct {
-	ID       string   `yaml:"id"`
-	Role     string   `yaml:"role"`
-	Prompt   string   `yaml:"prompt"`
-	Skills   []string `yaml:"skills"`
-	MaxTurns int      `yaml:"max_turns"`
-	Timeout  Duration `yaml:"timeout"`
+	ID        string   `yaml:"id"`
+	Role      string   `yaml:"role"`
+	Prompt    string   `yaml:"prompt"`
+	Skills    []string `yaml:"skills"`
+	MaxTurns  int      `yaml:"max_turns"`
+	MaxTokens int      `yaml:"max_tokens"`
+	Timeout   Duration `yaml:"timeout"`
 }
 
 // SessionKey names the sessions of reviewer r of loop n in the ledger, the transcripts and a script.

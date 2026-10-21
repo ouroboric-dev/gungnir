@@ -26,6 +26,21 @@ func TestParseGraphMaxTokens(t *testing.T) {
 	}
 }
 
+func TestParseGraphReviewerMaxTokens(t *testing.T) {
+	loop := schemaHead + "schema: 1\nnodes:\n  - { id: a, kind: loop, repo: repos/app, role: implementer, prompt: p.md, reviewers: [{ id: spec, role: reviewer, prompt: r.md, max_tokens: 30000 }] }\n"
+	g, err := ParseGraph("graph.yaml", []byte(loop))
+	if err != nil {
+		t.Fatalf("a reviewer with max_tokens: %v", err)
+	}
+	if got := g.Nodes[0].Reviewers[0].MaxTokens; got != 30000 {
+		t.Errorf("the reviewer's max_tokens = %d, want 30000", got)
+	}
+	bad := strings.Replace(loop, "max_tokens: 30000", "max_tokens: -1", 1)
+	if _, err := ParseGraph("graph.yaml", []byte(bad)); err == nil || !strings.Contains(err.Error(), "max_tokens") {
+		t.Errorf("a negative reviewer max_tokens: ParseGraph() = %v, want an error naming max_tokens", err)
+	}
+}
+
 func TestParseGraphRefusesBadMaxTokens(t *testing.T) {
 	head := schemaHead + "schema: 1\nnodes:\n"
 	cases := map[string]string{
