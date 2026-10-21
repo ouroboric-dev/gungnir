@@ -59,17 +59,18 @@ const DefaultAttempts = 3
 
 // Node is one step of a graph. Which fields apply depends on Kind.
 type Node struct {
-	ID       string       `yaml:"id"`
-	Kind     NodeKind     `yaml:"kind"`
-	Run      []string     `yaml:"run"`       // exec: the command, without a shell
-	Role     string       `yaml:"role"`      // agent, loop: the factory.yaml role (a loop's implementer)
-	Prompt   string       `yaml:"prompt"`    // agent, loop: the prompt file, relative to the graph
-	ReadOnly bool         `yaml:"read_only"` // agent
-	MaxTurns int          `yaml:"max_turns"` // agent, loop (the implementer)
-	Skills   []string     `yaml:"skills"`    // agent, loop: the skills loaded into its prompt, by name (spec §5.1)
-	Timeout  Duration     `yaml:"timeout"`   // exec, agent, loop (each session), merge and pointer
-	Gate     gungnir.Gate `yaml:"gate"`      // gate: the approval point
-	Reruns   string       `yaml:"reruns"`    // gate: the agent node a rejection re-runs; set by ParseGraph
+	ID        string       `yaml:"id"`
+	Kind      NodeKind     `yaml:"kind"`
+	Run       []string     `yaml:"run"`        // exec: the command, without a shell
+	Role      string       `yaml:"role"`       // agent, loop: the factory.yaml role (a loop's implementer)
+	Prompt    string       `yaml:"prompt"`     // agent, loop: the prompt file, relative to the graph
+	ReadOnly  bool         `yaml:"read_only"`  // agent
+	MaxTurns  int          `yaml:"max_turns"`  // agent, loop (the implementer)
+	MaxTokens int          `yaml:"max_tokens"` // agent, loop (each session): input plus output tokens, not cache reads; 0 is no limit
+	Skills    []string     `yaml:"skills"`     // agent, loop: the skills loaded into its prompt, by name (spec §5.1)
+	Timeout   Duration     `yaml:"timeout"`    // exec, agent, loop (each session), merge and pointer
+	Gate      gungnir.Gate `yaml:"gate"`       // gate: the approval point
+	Reruns    string       `yaml:"reruns"`     // gate: the agent node a rejection re-runs; set by ParseGraph
 
 	DeviationFrom string `yaml:"deviation_from"` // gate (spec): the scratch reviewer whose conformance.json says whether the spec deviates from the design; a deviation stops the gate (spec §7.1)
 
@@ -101,12 +102,13 @@ type Node struct {
 
 // Reviewer is a read-only agent that reviews a loop's work and reports typed findings (spec §4.6, §9.5).
 type Reviewer struct {
-	ID       string   `yaml:"id"`
-	Role     string   `yaml:"role"`
-	Prompt   string   `yaml:"prompt"`
-	Skills   []string `yaml:"skills"`
-	MaxTurns int      `yaml:"max_turns"`
-	Timeout  Duration `yaml:"timeout"`
+	ID        string   `yaml:"id"`
+	Role      string   `yaml:"role"`
+	Prompt    string   `yaml:"prompt"`
+	Skills    []string `yaml:"skills"`
+	MaxTurns  int      `yaml:"max_turns"`
+	MaxTokens int      `yaml:"max_tokens"`
+	Timeout   Duration `yaml:"timeout"`
 }
 
 // SessionKey names the sessions of reviewer r of loop n in the ledger, the transcripts and a script.

@@ -102,7 +102,7 @@ func TestFindingValidate(t *testing.T) {
 }
 
 func TestAResultNamesHowItFailed(t *testing.T) {
-	for _, k := range []FailureKind{"", FailureAgent, FailureTransient, FailureQuota} {
+	for _, k := range []FailureKind{"", FailureAgent, FailureTransient, FailureQuota, FailureTokenLimit} {
 		if err := (Result{Status: StatusFailed, Failure: k}).Validate(); err != nil {
 			t.Errorf("failure %q: Validate() = %v, want nil", k, err)
 		}
@@ -130,6 +130,7 @@ func TestFailureOfReadsASessionError(t *testing.T) {
 		want FailureKind
 	}{
 		"a quota error":            {quota, FailureQuota},
+		"a token limit":            {&SessionError{Kind: FailureTokenLimit, Err: errors.New("400000 tokens used")}, FailureTokenLimit},
 		"an infra error":           {&SessionError{Kind: FailureInfra, Err: errors.New("podman")}, FailureInfra},
 		"a session error w/o kind": {&SessionError{Err: errors.New("x")}, FailureAgent},
 		"a plain error":            {errors.New("exit 1"), FailureAgent},
