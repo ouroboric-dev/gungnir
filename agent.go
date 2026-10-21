@@ -25,6 +25,7 @@ type Task struct {
 	Model         string        // the role's model
 	ReadOnly      bool          // read-only roles get read and search tools only
 	MaxTurns      int           // 0: the adapter's own limit
+	MaxTokens     int           // 0: no limit
 	Timeout       time.Duration // 0: no limit beyond the context
 	EnvAllowlist  []string      // the host variables the session may see
 	TranscriptDir string        // where the adapter writes the session's transcript
@@ -75,6 +76,9 @@ const (
 	FailureQuota FailureKind = "quota"
 	// FailureInfra is the sandbox or the engine failing under a session. The run stops, with no retry loop.
 	FailureInfra FailureKind = "infra"
+	// FailureTokenLimit is a session stopped for passing its node's max_tokens. It counts as a loop attempt,
+	// and is never a hard stop.
+	FailureTokenLimit FailureKind = "token-limit"
 )
 
 // MaxOutput is the most bytes of a session's final answer a Result holds. A longer answer is an
@@ -130,12 +134,12 @@ func (r Result) Validate() error {
 	}
 	switch r.Failure {
 	case "":
-	case FailureAgent, FailureTransient, FailureQuota:
+	case FailureAgent, FailureTransient, FailureQuota, FailureTokenLimit:
 		if r.Status != StatusFailed {
 			return fmt.Errorf("result status %q has a failure kind %q", r.Status, r.Failure)
 		}
 	default:
-		return fmt.Errorf("result failure kind %q is not agent, transient or quota", r.Failure)
+		return fmt.Errorf("result failure kind %q is not agent, transient, quota or token-limit", r.Failure)
 	}
 	if len(r.Output) > MaxOutput {
 		return fmt.Errorf("result output is %d bytes, over the limit of %d", len(r.Output), MaxOutput)
