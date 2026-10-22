@@ -57,6 +57,16 @@ const (
 	EventPointerContractChecked EventName = "pointer_contract_checked" // the pointer-contract gate judged a pointer move
 	EventDepsChecked            EventName = "deps_checked"             // a realm's dependency policy was checked
 	EventDepsBump               EventName = "deps_bump"                // ygg deps bump ran a stage on a product
+
+	EventDisputeIgnored EventName = "dispute_ignored" // an implementer's dispute of a finding could not be used (B-114); Note says why
+)
+
+// FindingOrigin says what raised a finding, so a metric can tell a reviewer's veto from a failed check.
+type FindingOrigin string
+
+const (
+	OriginCheck  FindingOrigin = "check"  // a rung of the check ladder
+	OriginReview FindingOrigin = "review" // one of the loop's reviewers
 )
 
 // Events returns every event name, in the order above.
@@ -69,7 +79,7 @@ func Events() []EventName {
 		EventRetry, EventRunPaused, EventFindingRaised, EventFindingClosed, EventFindingReopened, EventFindingOverruled,
 		EventRealmLoaded, EventDocsPublished, EventTasksReady, EventNodeReturned, EventTaskStarted, EventTaskDone,
 		EventTaskBlocked, EventConformanceChecked, EventGradeStarted, EventGradeFinished, EventGradeRefused,
-		EventRoutingIndexBuilt, EventPointerContractChecked, EventDepsChecked, EventDepsBump}
+		EventRoutingIndexBuilt, EventPointerContractChecked, EventDepsChecked, EventDepsBump, EventDisputeIgnored}
 }
 
 // Event is one ledger line. Fields follow OpenTelemetry's GenAI attribute names (gen_ai.*) where
@@ -113,8 +123,9 @@ type Event struct {
 	RealmVersion    string `json:"ygg.realm.version,omitempty"` // and the version it was loaded at
 	Task            string `json:"ygg.task.id,omitempty"`       // the task a node works for, on every line of its shape
 
-	FindingAttempts int `json:"ygg.finding.attempts,omitempty"` // finding_closed: the loop attempts the finding took to close
-	FindingReopens  int `json:"ygg.finding.reopens,omitempty"`  // finding_closed, finding_reopened: how often it came back
+	FindingOrigin   FindingOrigin `json:"ygg.finding.origin,omitempty"`   // finding_* and dispute_ignored: a check or a reviewer
+	FindingAttempts int           `json:"ygg.finding.attempts,omitempty"` // finding_closed: the loop attempts the finding took to close
+	FindingReopens  int           `json:"ygg.finding.reopens,omitempty"`  // finding_closed, finding_reopened: how often it came back
 
 	// grade_started, grade_finished, grade_refused (Task is the task graded)
 	Suite       string      `json:"ygg.grade.suite,omitempty"`
@@ -131,6 +142,10 @@ type Event struct {
 	Edges     int    `json:"ygg.routing.edges,omitempty"`
 	Extracted int    `json:"ygg.routing.extracted,omitempty"`
 	Inferred  int    `json:"ygg.routing.inferred,omitempty"`
+	// The bench the index was measured by (spec §8.3), when its pack sets one. Pointers, so a score of 0 is written.
+	RoutingBench     *float64 `json:"ygg.routing.bench,omitempty"`     // the index's right-first score, 0 to 1
+	RoutingBaseline  *float64 `json:"ygg.routing.baseline,omitempty"`  // the grep baseline's score on the same questions
+	RoutingThreshold *float64 `json:"ygg.routing.threshold,omitempty"` // the bar the pack sets
 
 	// pointer_contract_checked; Verdict is also deps_checked's and deps_bump's (pass or fail)
 	Move     string `json:"ygg.pointer.move,omitempty"`
@@ -143,6 +158,9 @@ type Event struct {
 	From     string `json:"ygg.deps.from,omitempty"`
 	To       string `json:"ygg.deps.to,omitempty"`
 	Stage    string `json:"ygg.deps.stage,omitempty"` // canary or rollout
+
+	// run_started and run_resumed: the build of ygg that wrote the line (spec §10.2: a report records the factory version)
+	FactoryVersion string `json:"ygg.factory.version,omitempty"`
 
 	Prev string `json:"prev"` // hex SHA-256 of the previous line; 64 zeros on the first line
 }
