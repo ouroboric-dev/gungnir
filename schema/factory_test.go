@@ -169,11 +169,15 @@ func TestCapReached(t *testing.T) {
 		usd  bool
 		want gungnir.CapDimension // "" for no cap reached
 	}{
-		{"room left", gungnir.Usage{InTok: 400, OutTok: 500, Turns: 9, CostUSD: 1.99}, true, ""},
+		{"room left", gungnir.Usage{InTok: 400, OutTok: 500, Turns: 9, CostUSD: 1.99, BilledUSD: 1.99}, true, ""},
 		{"tokens exactly at the cap", gungnir.Usage{InTok: 600, OutTok: 400}, true, gungnir.CapTokens},
 		{"cache reads don't count", gungnir.Usage{InTok: 1, CacheTok: 1 << 40}, true, ""},
 		{"turns at the cap", gungnir.Usage{Turns: 10}, true, gungnir.CapTurns},
-		{"dollars at the cap on a paid API", gungnir.Usage{CostUSD: 2}, true, gungnir.CapUSD},
+		{"dollars at the cap on a paid API", gungnir.Usage{CostUSD: 2, BilledUSD: 2}, true, gungnir.CapUSD},
+		// A config with one paid role and one subscription role counts dollars; the subscription's figure is
+		// what its sessions would cost on the API, and nobody bills it.
+		{"a subscription's estimate beside a paid role is not spend", gungnir.Usage{CostUSD: 23, BilledUSD: 0.6}, true, ""},
+		{"what a paid role was billed is spend", gungnir.Usage{CostUSD: 23, BilledUSD: 2.5}, true, gungnir.CapUSD},
 		{"dollars of a subscription never count", gungnir.Usage{CostUSD: 500}, false, ""},
 	}
 	for _, tc := range cases {

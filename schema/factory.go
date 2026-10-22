@@ -98,15 +98,16 @@ type Cap struct {
 
 // Reached returns the first limit of c that u has reached, or nil. A limit is reached when use equals
 // it, so a cap of zero stops everything. Dollars count only when usd is true, which is when a role
-// bills a paid API (see PaidAPI): a subscription's dollar figure is what the run would cost on the API.
+// bills a paid API (see PaidAPI), and then only what was billed (Usage.BilledUSD): a subscription's dollar
+// figure is what its sessions would cost on the API, and nobody charges it.
 func (c Cap) Reached(scope gungnir.CapScope, u gungnir.Usage, usd bool) *gungnir.CapError {
 	switch {
 	case u.CapTokens() >= c.Tokens:
 		return &gungnir.CapError{Scope: scope, Dimension: gungnir.CapTokens, Used: float64(u.CapTokens()), Limit: float64(c.Tokens)}
 	case u.Turns >= c.Turns:
 		return &gungnir.CapError{Scope: scope, Dimension: gungnir.CapTurns, Used: float64(u.Turns), Limit: float64(c.Turns)}
-	case usd && u.CostUSD >= c.USD:
-		return &gungnir.CapError{Scope: scope, Dimension: gungnir.CapUSD, Used: u.CostUSD, Limit: c.USD}
+	case usd && u.BilledUSD >= c.USD:
+		return &gungnir.CapError{Scope: scope, Dimension: gungnir.CapUSD, Used: u.BilledUSD, Limit: c.USD}
 	}
 	return nil
 }

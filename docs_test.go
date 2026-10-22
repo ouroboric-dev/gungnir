@@ -43,3 +43,40 @@ func TestTheArchitecturePageNamesTheGraphPins(t *testing.T) {
 		}
 	}
 }
+
+// The architecture page names what `ygg metrics` reads from the ledger: a new field of that kind with no line in
+// the page fails here.
+func TestTheArchitecturePageNamesWhatMetricsReads(t *testing.T) {
+	b, err := os.ReadFile(filepath.Join("docs", "architecture.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	page := string(b)
+	for _, want := range []string{string(EventDisputeIgnored), "ygg.finding.origin", "ygg.routing.bench", "ygg.routing.baseline", "ygg.routing.threshold", "ygg.factory.version"} {
+		if !strings.Contains(page, want) {
+			t.Errorf("docs/architecture.md does not mention %q", want)
+		}
+	}
+}
+
+func TestTheArchitecturePageNamesTheTrackerAndTheBoard(t *testing.T) {
+	b, err := os.ReadFile(filepath.Join("docs", "architecture.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"`Tracker`", "`Board`", "`Card`", "`Column`"} {
+		if !strings.Contains(string(b), want) {
+			t.Errorf("docs/architecture.md does not mention %q", want)
+		}
+	}
+}
+
+func TestTheArchitecturePageSaysWhatTheDollarCapsCount(t *testing.T) {
+	b, err := os.ReadFile(filepath.Join("docs", "architecture.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(b), "`Usage.BilledUSD`") {
+		t.Error("docs/architecture.md does not mention `Usage.BilledUSD`")
+	}
+}

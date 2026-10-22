@@ -48,6 +48,9 @@ type Usage struct {
 	Turns         int64   `json:"turns"`
 	CostUSD       float64 `json:"cost_usd"`
 	CostEstimated bool    `json:"cost_estimated"`
+	// BilledUSD is the part of CostUSD that an adapter bills to a paid API (see schema.PaidAPI). A subscription's
+	// sessions have a cost figure, what they would cost on the API, and bill nothing. The dollar caps count this.
+	BilledUSD float64 `json:"billed_usd,omitempty"`
 }
 
 // Add returns the sum of u and v. The sum is estimated if either part is.
@@ -59,6 +62,7 @@ func (u Usage) Add(v Usage) Usage {
 		Turns:         u.Turns + v.Turns,
 		CostUSD:       u.CostUSD + v.CostUSD,
 		CostEstimated: u.CostEstimated || v.CostEstimated,
+		BilledUSD:     u.BilledUSD + v.BilledUSD,
 	}
 }
 
