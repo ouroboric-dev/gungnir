@@ -50,6 +50,8 @@ The contract: Go interface types and JSON schemas for ledger events, `graph.yaml
   (`routing_index_built`, `pointer_contract_checked`) and of dependency checks (`deps_checked`,
   `deps_bump`). A reward of 0 is still written. A refusal has one reason: `retired`, `missing_suite`,
   `brief_changed`, `bad_manifest` or `bad_task`.
+- Defines `Tracker`, and the `Board`, `Card` and `Column` it returns: six columns in reading order, a board that is
+  checked (no unknown column, no task twice, a blocked card says why).
 - Defines the ledger fields that `ygg metrics` reads: the event `dispute_ignored`, `ygg.finding.origin` (`check` or
   `review`) on every finding line, the bench numbers of a measured routing index (`ygg.routing.bench`,
   `ygg.routing.baseline`, `ygg.routing.threshold`, each from 0 to 1 and written when 0) and the build of ygg that wrote a

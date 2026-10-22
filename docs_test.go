@@ -58,3 +58,15 @@ func TestTheArchitecturePageNamesWhatMetricsReads(t *testing.T) {
 		}
 	}
 }
+
+func TestTheArchitecturePageNamesTheTrackerAndTheBoard(t *testing.T) {
+	b, err := os.ReadFile(filepath.Join("docs", "architecture.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"`Tracker`", "`Board`", "`Card`", "`Column`"} {
+		if !strings.Contains(string(b), want) {
+			t.Errorf("docs/architecture.md does not mention %q", want)
+		}
+	}
+}
