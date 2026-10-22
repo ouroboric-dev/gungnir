@@ -70,3 +70,13 @@ func TestTheArchitecturePageNamesTheTrackerAndTheBoard(t *testing.T) {
 		}
 	}
 }
+
+func TestTheArchitecturePageSaysWhatTheDollarCapsCount(t *testing.T) {
+	b, err := os.ReadFile(filepath.Join("docs", "architecture.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(b), "`Usage.BilledUSD`") {
+		t.Error("docs/architecture.md does not mention `Usage.BilledUSD`")
+	}
+}
