@@ -40,13 +40,14 @@ func ParseFinding(data []byte) (gungnir.Finding, error) {
 }
 
 // ParseReport parses a reviewer's answer: prose may come first, then one JSON document with a findings
-// list, bare or in a single code fence, as the last thing in the answer. The prose is ignored. Text after
-// the report, a second fence or document, an unclosed fence, an answer with no document, a finding
+// list, bare or in a single code fence, as the last thing in the answer. The prose is ignored, JSON quoted in
+// it included; only an object with a findings key there counts as a second document. Text after
+// the report, a second report, an unclosed fence, an answer with no document, a finding
 // without a location, a fixed finding without proof and an id used twice are errors, never an empty
 // report: an answer that can't be read doesn't count as a pass (spec §4.6).
 func ParseReport(answer []byte) (gungnir.Report, error) {
 	var r gungnir.Report
-	data, err := lastDocument("report", string(answer))
+	data, err := lastDocument("report", "findings", string(answer))
 	if err != nil {
 		return r, err
 	}
@@ -75,10 +76,12 @@ func ParseReport(answer []byte) (gungnir.Report, error) {
 	return r, nil
 }
 
-// lastDocument returns the document at the end of an answer, named what in errors: a bare JSON document or one in a single code
-// fence, with any prose before it. It refuses text after the document, a second fence or document, an
-// unclosed fence and an answer with no document.
-func lastDocument(what, answer string) (string, error) {
+// lastDocument returns the document at the end of an answer, named what in errors: a bare JSON document or
+// one in the last code fence, with any prose before it. The prose is ignored: JSON quoted in it, inline or
+// in earlier fences, is prose. Only a document whose top level has key (findings for a report, disputes for
+// disputes) counts as a second document, and it is refused. Text after the document, a code fence left
+// unclosed and an answer with no document are errors.
+func lastDocument(what, key, answer string) (string, error) {
 	s := strings.TrimSpace(answer)
 	var prose, data string
 	switch n := strings.Count(s, "```"); {
@@ -93,17 +96,16 @@ func lastDocument(what, answer string) (string, error) {
 		if start < 0 {
 			return "", fmt.Errorf("%s: the answer does not end with a JSON document", what)
 		}
-		// The report is the first tail that parses; a complete document before it is a second document.
+		// The report is the first tail that parses; a report-shaped document before it is a second document.
 		prose, data = s[:start], s[start:]
-	case n == 1:
+	case n%2 == 1:
 		return "", fmt.Errorf("%s: a code fence is not closed", what)
-	case n > 2:
-		return "", fmt.Errorf("%s: more than one code fence", what)
 	default:
 		if !strings.HasSuffix(s, "```") {
 			return "", fmt.Errorf("%s: text after the report", what)
 		}
-		open := strings.Index(s, "```")
+		// The last fence is the document; earlier fenced blocks are prose.
+		open := strings.LastIndex(strings.TrimSuffix(s, "```"), "```")
 		prose = s[:open]
 		_, body, ok := strings.Cut(s[open:], "\n")
 		if !ok {
@@ -111,22 +113,24 @@ func lastDocument(what, answer string) (string, error) {
 		}
 		data = strings.TrimSpace(strings.TrimSuffix(strings.TrimSpace(body), "```"))
 	}
-	if containsDocument(prose) {
+	if containsDocument(prose, key) {
 		return "", fmt.Errorf("%s: more than one document", what)
 	}
 	return data, nil
 }
 
-// containsDocument reports whether text holds a complete JSON object. Braces in ordinary prose don't
-// count: they don't parse.
-func containsDocument(text string) bool {
+// containsDocument reports whether text holds a complete JSON object whose top level has key. Other JSON
+// quoted in the text, and braces that don't parse, are prose and don't count.
+func containsDocument(text, key string) bool {
 	for i := 0; i < len(text); i++ {
 		if text[i] != '{' {
 			continue
 		}
-		var v json.RawMessage
+		var v map[string]json.RawMessage
 		if json.NewDecoder(strings.NewReader(text[i:])).Decode(&v) == nil {
-			return true
+			if _, ok := v[key]; ok {
+				return true
+			}
 		}
 	}
 	return false
@@ -184,7 +188,7 @@ func ParseConformance(answer []byte) (gungnir.Conformance, error) {
 // a dispute that can't be read changes no finding (change disputed-findings).
 func ParseDisputes(answer []byte) (gungnir.Disputes, error) {
 	var d gungnir.Disputes
-	data, err := lastDocument("disputes", string(answer))
+	data, err := lastDocument("disputes", "disputes", string(answer))
 	if err != nil {
 		return d, err
 	}
