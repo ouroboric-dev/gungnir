@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/ouroboric-dev/gungnir"
 )
@@ -28,6 +29,33 @@ type Pack struct {
 	// Routing sets what a routing index must score on the project's bench before it ships (spec §8.3).
 	// A pack without the block ships its indexes unmeasured.
 	Routing *PackRouting `yaml:"routing"`
+	// Product is how a runtime realm starts the product it builds. A pack without the block has no
+	// product start.
+	Product *PackProduct `yaml:"product"`
+	// Needs are the services the leaves of a build realm need (names in gungnir.Needs): the runtime realm
+	// of the project must provide each.
+	Needs []string `yaml:"needs"`
+	// Provides maps each need a runtime realm meets to the name of one of its Services.
+	Provides map[string]string `yaml:"provides"`
+}
+
+// Provider returns the service of this pack that meets the need, and false when the pack provides none.
+func (p *Pack) Provider(need string) (gungnir.Service, bool) {
+	name, ok := p.Provides[need]
+	if !ok {
+		return gungnir.Service{}, false
+	}
+	for _, s := range p.ServiceList() {
+		if s.Name == name {
+			return s, true
+		}
+	}
+	return gungnir.Service{}, false
+}
+
+// PackProduct is the product block of a runtime realm's pack.
+type PackProduct struct {
+	Start string `yaml:"start"` // the product start script, a regular file of the pack; Odin copies it to the project's root
 }
 
 // HoldsRecipe reports whether the pack is a build recipe as well as, or instead of, a graph: it has checks,
@@ -112,6 +140,33 @@ type PackRole struct {
 // checkRecipe checks the leaf recipe and the services: every path stays inside the realm and is there,
 // every check the recipe names is defined, and the services are what a sandbox can start.
 func (p *Pack) checkRecipe(file, dir string) error {
+	if p.Leaf != nil && (len(p.Provides) > 0 || p.Product != nil) {
+		return fmt.Errorf("%s: a runtime realm provides no leaf: leaf cannot go with provides or product", file)
+	}
+	if p.Sandbox != nil && (len(p.Provides) > 0 || p.Product != nil) {
+		return fmt.Errorf("%s: a runtime realm provides no leaf and no stack: sandbox cannot go with provides or product", file)
+	}
+	seenNeed := map[string]bool{}
+	for _, n := range p.Needs {
+		if !gungnir.ValidNeed(n) {
+			return fmt.Errorf("%s: needs names %q, which is not a need (%s)", file, n, needNames())
+		}
+		if seenNeed[n] {
+			return fmt.Errorf("%s: needs names %q twice", file, n)
+		}
+		seenNeed[n] = true
+	}
+	for _, need := range sortedKeys(p.Provides) {
+		if !gungnir.ValidNeed(need) {
+			return fmt.Errorf("%s: provides names %q, which is not a need (%s)", file, need, needNames())
+		}
+		if svc := p.Provides[need]; svc != need {
+			return fmt.Errorf("%s: provides %s: service %q must be named %q; a need and its service share one name", file, need, svc, need)
+		}
+		if _, ok := p.Services[p.Provides[need]]; !ok {
+			return fmt.Errorf("%s: provides %s: service %q is not defined under services", file, need, p.Provides[need])
+		}
+	}
 	if r := p.Leaf; r != nil {
 		for what, f := range map[string]string{"template": r.Template, "implementer": r.Implementer} {
 			if !filepath.IsLocal(f) {
@@ -167,6 +222,14 @@ func LoadPack(dir string) (*Pack, error) {
 	if err := p.checkRecipe(file, dir); err != nil {
 		return nil, err
 	}
+	if p.Product != nil {
+		if !filepath.IsLocal(p.Product.Start) {
+			return nil, fmt.Errorf("%s: product.start %q must be a path inside the realm", file, p.Product.Start)
+		}
+		if st, err := os.Lstat(filepath.Join(dir, p.Product.Start)); err != nil || !st.Mode().IsRegular() {
+			return nil, fmt.Errorf("%s: product.start %q must be a regular file of the realm", file, p.Product.Start)
+		}
+	}
 	if p.Routing != nil && !filepath.IsLocal(p.Routing.BenchPath()) {
 		return nil, fmt.Errorf("%s: routing bench %q must be a path inside the project", file, p.Routing.BenchPath())
 	}
@@ -214,4 +277,13 @@ func ptrOr(s *PackStack) PackStack {
 		return PackStack{}
 	}
 	return *s
+}
+
+// needNames lists the names in gungnir.Needs, for a message.
+func needNames() string {
+	var names []string
+	for _, n := range gungnir.Needs {
+		names = append(names, n.Name)
+	}
+	return strings.Join(names, ", ")
 }

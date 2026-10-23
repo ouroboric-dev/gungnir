@@ -9,7 +9,16 @@ import (
 // Leaves is a product's leaves file (leaves.yaml): the leaves the spec stage names, and the realm that
 // provides each one.
 type Leaves struct {
-	Leaves map[string]LeafSpec `yaml:"leaves"`
+	// Runtime pins the one runtime realm that provides the project's services, such as niflheim-local.
+	// It is optional; a file without one leaves the project's pin as it was.
+	Runtime *RuntimePin         `yaml:"runtime,omitempty"`
+	Leaves  map[string]LeafSpec `yaml:"leaves"`
+}
+
+// RuntimePin names a runtime realm and its version.
+type RuntimePin struct {
+	Realm        string `yaml:"realm"`
+	RealmVersion string `yaml:"realm_version"`
 }
 
 // LeafSpec is one leaf of the file.
@@ -84,4 +93,13 @@ func (l *Leaves) Pins() []Pin {
 		pins = append(pins, Pin{l.Leaves[p].Realm, l.Leaves[p].RealmVersion, p})
 	}
 	return pins
+}
+
+// RuntimePin returns the runtime realm the leaves file pins, with Where set to RuntimeWhere, and whether it
+// pins one.
+func (l *Leaves) RuntimePin() (Pin, bool) {
+	if l.Runtime == nil {
+		return Pin{}, false
+	}
+	return Pin{l.Runtime.Realm, l.Runtime.RealmVersion, RuntimeWhere}, true
 }

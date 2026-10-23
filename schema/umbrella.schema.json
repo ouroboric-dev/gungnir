@@ -12,6 +12,8 @@
     "visibility": { "$ref": "#/$defs/visibility" },
     "graph": { "type": "string" },
     "graph_version": { "type": "string" },
+    "runtime": { "type": "string" },
+    "runtime_version": { "type": "string" },
     "children": {
       "type": "object",
       "propertyNames": { "pattern": "^[a-z0-9][a-z0-9._-]*(/[a-z0-9][a-z0-9._-]*)*$" },

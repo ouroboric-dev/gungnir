@@ -7,6 +7,16 @@
   "additionalProperties": false,
   "required": ["leaves"],
   "properties": {
+    "runtime": {
+      "description": "The one runtime realm that provides the project's services, such as niflheim-local.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["realm", "realm_version"],
+      "properties": {
+        "realm": { "type": "string", "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$" },
+        "realm_version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" }
+      }
+    },
     "leaves": {
       "type": "object",
       "minProperties": 1,

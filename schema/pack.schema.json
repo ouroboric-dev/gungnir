@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/ouroboric-dev/gungnir/schema/pack.schema.json",
   "title": "pack.yaml",
-  "description": "A realm pack: its name, version, graph (when it is a graph pack), default roles, check commands, the leaf recipe a build realm offers, its sandbox services, and the default leaves its graph works in (spec §9.4; changes remote-creates-repos and realm-leaf-naming).",
+  "description": "A realm pack: its name, version, graph (when it is a graph pack), default roles, check commands, the leaf recipe a build realm offers, the services its leaves need (needs), the services a runtime realm provides (provides) and the script that starts its product (product), its sandbox services, and the default leaves its graph works in (spec §9.4; changes remote-creates-repos and realm-leaf-naming).",
   "type": "object",
   "additionalProperties": false,
   "required": ["name", "version"],
@@ -65,6 +65,26 @@
         "implementer": { "type": "string", "minLength": 1 },
         "checks": { "type": "array", "minItems": 1, "items": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" } }
       }
+    },
+    "product": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["start"],
+      "description": "how a runtime realm starts the product it builds",
+      "properties": {
+        "start": { "type": "string", "minLength": 1, "description": "the product start script, a regular file of the pack; Odin copies it to the project's root" }
+      }
+    },
+    "needs": {
+      "type": "array",
+      "items": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
+      "description": "the services the leaves of a build realm need, each named once and in gungnir.Needs (postgres, s3; the loader checks both, so the message names the need): the runtime realm of the project must provide each"
+    },
+    "provides": {
+      "type": "object",
+      "propertyNames": { "pattern": "^[a-z][a-z0-9-]*$" },
+      "additionalProperties": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
+      "description": "a runtime realm: each need it meets (in gungnir.Needs), mapped to the name of one of its services"
     },
     "routing": {
       "type": "object",

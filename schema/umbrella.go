@@ -19,9 +19,13 @@ type Umbrella struct {
 	Visibility gungnir.Visibility `yaml:"visibility"`
 	// Graph and GraphVersion pin the graph pack that builds the project this umbrella is, such as
 	// software at 0.1.0 (change voluspa). Both are set, or neither.
-	Graph        string           `yaml:"graph,omitempty"`
-	GraphVersion string           `yaml:"graph_version,omitempty"`
-	Children     map[string]Child `yaml:"children,omitempty"` // path relative to the umbrella: child
+	Graph        string `yaml:"graph,omitempty"`
+	GraphVersion string `yaml:"graph_version,omitempty"`
+	// Runtime and RuntimeVersion pin the one runtime realm that provides the project's services, such
+	// as niflheim-local at 0.1.0. Both are set, or neither.
+	Runtime        string           `yaml:"runtime,omitempty"`
+	RuntimeVersion string           `yaml:"runtime_version,omitempty"`
+	Children       map[string]Child `yaml:"children,omitempty"` // path relative to the umbrella: child
 }
 
 // ChildKind is what a child node is.
@@ -114,6 +118,9 @@ func (u *Umbrella) checkRealms(file string) error {
 	if err := checkGraphPin(file, u.Graph, u.GraphVersion); err != nil {
 		return err
 	}
+	if err := checkRuntimePin(file, u.Runtime, u.RuntimeVersion); err != nil {
+		return err
+	}
 	for _, p := range u.Paths() {
 		c := u.Children[p]
 		if err := checkPin(file, "child "+p, c.Realm, c.RealmVersion); err != nil {
@@ -196,10 +203,29 @@ func checkGraphPin(file, graph, version string) error {
 	return nil
 }
 
+// checkRuntimePin checks that a runtime realm and its version are both set or both empty, and well formed.
+func checkRuntimePin(file, runtime, version string) error {
+	switch {
+	case runtime == "" && version == "":
+		return nil
+	case runtime == "" || version == "":
+		return fmt.Errorf("%s: the umbrella sets a runtime or a runtime version without the other; a pin is both", file)
+	case !gungnir.ValidRealm(runtime):
+		return fmt.Errorf("%s: the umbrella: runtime %q is not a realm name (lower case words joined by dashes)", file, runtime)
+	case !gungnir.ValidVersion(version):
+		return fmt.Errorf("%s: the umbrella: runtime version %q is not a version such as 1.2.3", file, version)
+	}
+	return nil
+}
+
+// RuntimeWhere is the Where of the pin of a project's runtime realm, in place of a child path.
+const RuntimeWhere = "runtime"
+
 // Pin is a realm leaf at a version, and the child path of the leaf that pins it.
 type Pin struct{ Realm, Version, Where string }
 
-// Pins returns every realm pin of the umbrella: each leaf's, by path. The graph pin is not one of them.
+// Pins returns every realm pin of the umbrella: each leaf's, by path. The graph pin and the runtime
+// pin are not among them.
 func (u *Umbrella) Pins() []Pin {
 	var pins []Pin
 	for _, p := range u.Paths() {
@@ -208,6 +234,15 @@ func (u *Umbrella) Pins() []Pin {
 		}
 	}
 	return pins
+}
+
+// RuntimePin returns the runtime realm the umbrella pins, with Where set to RuntimeWhere, and whether it
+// pins one.
+func (u *Umbrella) RuntimePin() (Pin, bool) {
+	if u.Runtime == "" {
+		return Pin{}, false
+	}
+	return Pin{u.Runtime, u.RuntimeVersion, RuntimeWhere}, true
 }
 
 // Paths returns the child paths, sorted.
