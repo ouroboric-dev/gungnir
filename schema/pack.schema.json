@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/ouroboric-dev/gungnir/schema/pack.schema.json",
   "title": "pack.yaml",
-  "description": "A realm pack: its name, version, graph (when it is a graph pack), default roles, check commands, the leaf recipe a build realm offers, its sandbox services, and the default leaves its graph works in (spec §9.4; changes remote-creates-repos and realm-leaf-naming).",
+  "description": "A realm pack: its name, version, graph (when it is a graph pack), default roles, check commands, the leaf recipe a build realm offers, the services its leaves need (needs), the services a runtime realm provides (provides) and the script that starts its product (product), its sandbox services, and the default leaves its graph works in (spec §9.4; changes remote-creates-repos and realm-leaf-naming).",
   "type": "object",
   "additionalProperties": false,
   "required": ["name", "version"],

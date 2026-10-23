@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/ouroboric-dev/gungnir"
 )
@@ -142,10 +143,13 @@ func (p *Pack) checkRecipe(file, dir string) error {
 	if p.Leaf != nil && (len(p.Provides) > 0 || p.Product != nil) {
 		return fmt.Errorf("%s: a runtime realm provides no leaf: leaf cannot go with provides or product", file)
 	}
+	if p.Sandbox != nil && (len(p.Provides) > 0 || p.Product != nil) {
+		return fmt.Errorf("%s: a runtime realm provides no leaf and no stack: sandbox cannot go with provides or product", file)
+	}
 	seenNeed := map[string]bool{}
 	for _, n := range p.Needs {
 		if !gungnir.ValidNeed(n) {
-			return fmt.Errorf("%s: needs names %q, which is not a need (postgres, s3)", file, n)
+			return fmt.Errorf("%s: needs names %q, which is not a need (%s)", file, n, needNames())
 		}
 		if seenNeed[n] {
 			return fmt.Errorf("%s: needs names %q twice", file, n)
@@ -154,7 +158,10 @@ func (p *Pack) checkRecipe(file, dir string) error {
 	}
 	for _, need := range sortedKeys(p.Provides) {
 		if !gungnir.ValidNeed(need) {
-			return fmt.Errorf("%s: provides names %q, which is not a need (postgres, s3)", file, need)
+			return fmt.Errorf("%s: provides names %q, which is not a need (%s)", file, need, needNames())
+		}
+		if svc := p.Provides[need]; svc != need {
+			return fmt.Errorf("%s: provides %s: service %q must be named %q; a need and its service share one name", file, need, svc, need)
 		}
 		if _, ok := p.Services[p.Provides[need]]; !ok {
 			return fmt.Errorf("%s: provides %s: service %q is not defined under services", file, need, p.Provides[need])
@@ -270,4 +277,13 @@ func ptrOr(s *PackStack) PackStack {
 		return PackStack{}
 	}
 	return *s
+}
+
+// needNames lists the names in gungnir.Needs, for a message.
+func needNames() string {
+	var names []string
+	for _, n := range gungnir.Needs {
+		names = append(names, n.Name)
+	}
+	return strings.Join(names, ", ")
 }

@@ -94,3 +94,12 @@ func (l *Leaves) Pins() []Pin {
 	}
 	return pins
 }
+
+// RuntimePin returns the runtime realm the leaves file pins, with Where set to RuntimeWhere, and whether it
+// pins one.
+func (l *Leaves) RuntimePin() (Pin, bool) {
+	if l.Runtime == nil {
+		return Pin{}, false
+	}
+	return Pin{l.Runtime.Realm, l.Runtime.RealmVersion, RuntimeWhere}, true
+}

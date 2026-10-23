@@ -218,6 +218,9 @@ func checkRuntimePin(file, runtime, version string) error {
 	return nil
 }
 
+// RuntimeWhere is the Where of the pin of a project's runtime realm, in place of a child path.
+const RuntimeWhere = "runtime"
+
 // Pin is a realm leaf at a version, and the child path of the leaf that pins it.
 type Pin struct{ Realm, Version, Where string }
 
@@ -233,13 +236,13 @@ func (u *Umbrella) Pins() []Pin {
 	return pins
 }
 
-// RuntimePin returns the runtime realm the umbrella pins, with Where set to "runtime", and whether it
+// RuntimePin returns the runtime realm the umbrella pins, with Where set to RuntimeWhere, and whether it
 // pins one.
 func (u *Umbrella) RuntimePin() (Pin, bool) {
 	if u.Runtime == "" {
 		return Pin{}, false
 	}
-	return Pin{u.Runtime, u.RuntimeVersion, "runtime"}, true
+	return Pin{u.Runtime, u.RuntimeVersion, RuntimeWhere}, true
 }
 
 // Paths returns the child paths, sorted.

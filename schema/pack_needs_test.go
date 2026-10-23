@@ -28,6 +28,7 @@ func TestPackNeedsAndProvides(t *testing.T) {
 		"needs as a string":                 {"needs: postgres\n", "needs"},
 		"provides an unknown":               {services + "provides: {redis: postgres}\n", "redis"},
 		"provides a service the pack lacks": {services + "provides: {postgres: mysql}\n", "mysql"},
+		"provides another name":             {services + "provides: {s3: postgres}\n", "s3"},
 		"provides with no services":         {"provides: {postgres: postgres}\n", "postgres"},
 		"provides an empty service":         {services + "provides: {postgres: \"\"}\n", "provides"},
 	} {
@@ -76,6 +77,13 @@ func TestPackNeedsAndProvides(t *testing.T) {
 		if _, err := LoadPack(dir); err == nil || !strings.Contains(err.Error(), "a runtime realm provides no leaf") {
 			t.Errorf("%s: LoadPack() = %v, want \"a runtime realm provides no leaf\"", name, err)
 		}
+	}
+
+	if _, err := load(t, services+"provides: {s3: s3}\nsandbox:\n  stack: "+digest+"\n"); err == nil || !strings.Contains(err.Error(), "a runtime realm provides no leaf and no stack") {
+		t.Errorf("provides and sandbox: LoadPack() = %v, want \"a runtime realm provides no leaf and no stack\"", err)
+	}
+	if _, err := load(t, "product:\n  start: start.sh\nsandbox:\n  stack: "+digest+"\n"); err == nil || !strings.Contains(err.Error(), "no stack") {
+		t.Errorf("product and sandbox: LoadPack() = %v, want the no-stack refusal", err)
 	}
 
 	if p, err := load(t, ""); err != nil || p.Needs != nil || p.Provides != nil {

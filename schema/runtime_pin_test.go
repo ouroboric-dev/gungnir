@@ -103,3 +103,21 @@ func TestRuntimePin(t *testing.T) {
 		}
 	})
 }
+
+// TestLeavesRuntimePin: the leaves file gives its runtime pin as the umbrella does.
+func TestLeavesRuntimePin(t *testing.T) {
+	l, err := ParseLeaves("leaves.yaml", []byte("runtime:\n  realm: niflheim-local\n  realm_version: 0.1.0\n"+leavesBody))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, ok := l.RuntimePin(); !ok || got != (Pin{"niflheim-local", "0.1.0", "runtime"}) {
+		t.Errorf("RuntimePin() = %+v, %v", got, ok)
+	}
+	l, err = ParseLeaves("leaves.yaml", []byte(leavesBody))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, ok := l.RuntimePin(); ok {
+		t.Errorf("RuntimePin() = %+v, true; want none", got)
+	}
+}
