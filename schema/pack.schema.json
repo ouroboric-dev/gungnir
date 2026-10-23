@@ -72,7 +72,7 @@
       "required": ["start"],
       "description": "how a runtime realm starts the product it builds",
       "properties": {
-        "start": { "type": "string", "minLength": 1, "description": "the product start script, a file of the pack; Odin copies it to the project's root" }
+        "start": { "type": "string", "minLength": 1, "description": "the product start script, a regular file of the pack; Odin copies it to the project's root" }
       }
     },
     "routing": {

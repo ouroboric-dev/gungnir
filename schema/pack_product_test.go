@@ -30,7 +30,8 @@ func TestPackProductStart(t *testing.T) {
 	if p, err := LoadPack(pack(t, "")); err != nil || p.Product != nil {
 		t.Errorf("a pack without product: %+v, %v", p, err)
 	}
-	// These name a file that exists, so only the path check refuses them.
+	// The absolute path is also refused by the missing-file check; the .. case is the one that proves the
+	// local-path check, since it names a file that exists.
 	dir := pack(t, "")
 	for name, product := range map[string]string{
 		"an absolute path": "product:\n  start: " + filepath.Join(dir, "templates", "product", "start.sh") + "\n",
@@ -55,6 +56,8 @@ func TestPackProductStart(t *testing.T) {
 			t.Errorf("%s: LoadPack() = nil, want an error", name)
 		} else if !strings.Contains(err.Error(), "product") {
 			t.Errorf("%s: %v; want the field in the message", name, err)
+		} else if (name == "a file not in pack" || name == "a directory") && !strings.Contains(err.Error(), "product.start") {
+			t.Errorf("%s: %v; want product.start in the message", name, err)
 		}
 	}
 }
