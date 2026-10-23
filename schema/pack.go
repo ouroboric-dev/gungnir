@@ -28,6 +28,14 @@ type Pack struct {
 	// Routing sets what a routing index must score on the project's bench before it ships (spec §8.3).
 	// A pack without the block ships its indexes unmeasured.
 	Routing *PackRouting `yaml:"routing"`
+	// Product is how a runtime realm starts the product it builds. A pack without the block has no
+	// product start.
+	Product *PackProduct `yaml:"product"`
+}
+
+// PackProduct is the product block of a runtime realm's pack.
+type PackProduct struct {
+	Start string `yaml:"start"` // the product start script, a regular file of the pack; Odin copies it to the project's root
 }
 
 // HoldsRecipe reports whether the pack is a build recipe as well as, or instead of, a graph: it has checks,
@@ -166,6 +174,14 @@ func LoadPack(dir string) (*Pack, error) {
 	}
 	if err := p.checkRecipe(file, dir); err != nil {
 		return nil, err
+	}
+	if p.Product != nil {
+		if !filepath.IsLocal(p.Product.Start) {
+			return nil, fmt.Errorf("%s: product.start %q must be a path inside the realm", file, p.Product.Start)
+		}
+		if st, err := os.Lstat(filepath.Join(dir, p.Product.Start)); err != nil || !st.Mode().IsRegular() {
+			return nil, fmt.Errorf("%s: product.start %q must be a regular file of the realm", file, p.Product.Start)
+		}
 	}
 	if p.Routing != nil && !filepath.IsLocal(p.Routing.BenchPath()) {
 		return nil, fmt.Errorf("%s: routing bench %q must be a path inside the project", file, p.Routing.BenchPath())
