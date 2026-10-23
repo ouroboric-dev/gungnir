@@ -31,6 +31,25 @@ type Pack struct {
 	// Product is how a runtime realm starts the product it builds. A pack without the block has no
 	// product start.
 	Product *PackProduct `yaml:"product"`
+	// Needs are the services the leaves of a build realm need (names in gungnir.Needs): the runtime realm
+	// of the project must provide each.
+	Needs []string `yaml:"needs"`
+	// Provides maps each need a runtime realm meets to the name of one of its Services.
+	Provides map[string]string `yaml:"provides"`
+}
+
+// Provider returns the service of this pack that meets the need, and false when the pack provides none.
+func (p *Pack) Provider(need string) (gungnir.Service, bool) {
+	name, ok := p.Provides[need]
+	if !ok {
+		return gungnir.Service{}, false
+	}
+	for _, s := range p.ServiceList() {
+		if s.Name == name {
+			return s, true
+		}
+	}
+	return gungnir.Service{}, false
 }
 
 // PackProduct is the product block of a runtime realm's pack.
@@ -120,6 +139,27 @@ type PackRole struct {
 // checkRecipe checks the leaf recipe and the services: every path stays inside the realm and is there,
 // every check the recipe names is defined, and the services are what a sandbox can start.
 func (p *Pack) checkRecipe(file, dir string) error {
+	if p.Leaf != nil && (len(p.Provides) > 0 || p.Product != nil) {
+		return fmt.Errorf("%s: a runtime realm provides no leaf: leaf cannot go with provides or product", file)
+	}
+	seenNeed := map[string]bool{}
+	for _, n := range p.Needs {
+		if !gungnir.ValidNeed(n) {
+			return fmt.Errorf("%s: needs names %q, which is not a need (postgres, s3)", file, n)
+		}
+		if seenNeed[n] {
+			return fmt.Errorf("%s: needs names %q twice", file, n)
+		}
+		seenNeed[n] = true
+	}
+	for _, need := range sortedKeys(p.Provides) {
+		if !gungnir.ValidNeed(need) {
+			return fmt.Errorf("%s: provides names %q, which is not a need (postgres, s3)", file, need)
+		}
+		if _, ok := p.Services[p.Provides[need]]; !ok {
+			return fmt.Errorf("%s: provides %s: service %q is not defined under services", file, need, p.Provides[need])
+		}
+	}
 	if r := p.Leaf; r != nil {
 		for what, f := range map[string]string{"template": r.Template, "implementer": r.Implementer} {
 			if !filepath.IsLocal(f) {

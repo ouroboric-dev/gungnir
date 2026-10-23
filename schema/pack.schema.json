@@ -75,6 +75,17 @@
         "start": { "type": "string", "minLength": 1, "description": "the product start script, a regular file of the pack; Odin copies it to the project's root" }
       }
     },
+    "needs": {
+      "type": "array",
+      "items": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
+      "description": "the services the leaves of a build realm need, each named once and in gungnir.Needs (postgres, s3; the loader checks both, so the message names the need): the runtime realm of the project must provide each"
+    },
+    "provides": {
+      "type": "object",
+      "propertyNames": { "pattern": "^[a-z][a-z0-9-]*$" },
+      "additionalProperties": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
+      "description": "a runtime realm: each need it meets (in gungnir.Needs), mapped to the name of one of its services"
+    },
     "routing": {
       "type": "object",
       "additionalProperties": false,
