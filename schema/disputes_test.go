@@ -17,6 +17,8 @@ func TestParseDisputes(t *testing.T) {
 		"in a fence":                    "```json\n{\"disputes\":[" + one + "]}\n```\n",
 		"a sentence then a fence":       "I disagree with the reviewer.\n\n```json\n{\"disputes\":[" + one + "]}\n```",
 		"prose with braces then a bare": "Using {x} here:\n{\"disputes\":[" + one + "]}",
+		"prose quoting an object":       "The route returns `{\"status\":\"ok\"}`.\n{\"disputes\":[" + one + "]}",
+		"a fenced object in the prose":  "Body:\n```json\n{\"status\":\"ok\"}\n```\n```json\n{\"disputes\":[" + one + "]}\n```",
 	} {
 		d, err := ParseDisputes([]byte(answer))
 		if err != nil {
@@ -26,27 +28,28 @@ func TestParseDisputes(t *testing.T) {
 		}
 	}
 	for name, answer := range map[string]string{
-		"an empty answer":        "",
-		"prose only":             "I dispute it.",
-		"no disputes key":        `{}`,
-		"disputes null":          `{"disputes":null}`,
-		"an extra key":           `{"disputes":[],"verdict":"win"}`,
-		"a missing id":           `{"disputes":[{"check":"test","test":"T","evidence":"e"}]}`,
-		"a missing check":        `{"disputes":[{"id":"a","test":"T","evidence":"e"}]}`,
-		"a missing test":         `{"disputes":[{"id":"a","check":"test","evidence":"e"}]}`,
-		"a missing evidence":     `{"disputes":[{"id":"a","check":"test","test":"T"}]}`,
-		"an empty id":            `{"disputes":[{"id":"","check":"test","test":"T","evidence":"e"}]}`,
-		"an empty check":         `{"disputes":[{"id":"a","check":"","test":"T","evidence":"e"}]}`,
-		"an empty test":          `{"disputes":[{"id":"a","check":"test","test":"","evidence":"e"}]}`,
-		"an empty evidence":      `{"disputes":[{"id":"a","check":"test","test":"T","evidence":""}]}`,
-		"an unknown field":       `{"disputes":[{"id":"a","check":"test","test":"T","evidence":"e","note":"x"}]}`,
-		"an id used twice":       `{"disputes":[` + one + `,` + one + `]}`,
-		"text after":             "{\"disputes\":[]}\nDone.",
-		"two bare documents":     "{\"disputes\":[]}\n{\"disputes\":[]}",
-		"two fences":             "```json\n{\"disputes\":[]}\n```\n```json\n{\"disputes\":[]}\n```",
-		"an unclosed fence":      "```json\n{\"disputes\":[]}",
-		"a document in prose":    "Example: {\"disputes\":[]}\n```\n{\"disputes\":[]}\n```",
-		"a report, not disputes": `{"findings":[]}`,
+		"an empty answer":             "",
+		"prose only":                  "I dispute it.",
+		"no disputes key":             `{}`,
+		"disputes null":               `{"disputes":null}`,
+		"an extra key":                `{"disputes":[],"verdict":"win"}`,
+		"a missing id":                `{"disputes":[{"check":"test","test":"T","evidence":"e"}]}`,
+		"a missing check":             `{"disputes":[{"id":"a","test":"T","evidence":"e"}]}`,
+		"a missing test":              `{"disputes":[{"id":"a","check":"test","evidence":"e"}]}`,
+		"a missing evidence":          `{"disputes":[{"id":"a","check":"test","test":"T"}]}`,
+		"an empty id":                 `{"disputes":[{"id":"","check":"test","test":"T","evidence":"e"}]}`,
+		"an empty check":              `{"disputes":[{"id":"a","check":"","test":"T","evidence":"e"}]}`,
+		"an empty test":               `{"disputes":[{"id":"a","check":"test","test":"","evidence":"e"}]}`,
+		"an empty evidence":           `{"disputes":[{"id":"a","check":"test","test":"T","evidence":""}]}`,
+		"an unknown field":            `{"disputes":[{"id":"a","check":"test","test":"T","evidence":"e","note":"x"}]}`,
+		"an id used twice":            `{"disputes":[` + one + `,` + one + `]}`,
+		"text after":                  "{\"disputes\":[]}\nDone.",
+		"two bare documents":          "{\"disputes\":[]}\n{\"disputes\":[]}",
+		"two fences":                  "```json\n{\"disputes\":[]}\n```\n```json\n{\"disputes\":[]}\n```",
+		"an unclosed fence":           "```json\n{\"disputes\":[]}",
+		"a document in prose":         "Example: {\"disputes\":[]}\n```\n{\"disputes\":[]}\n```",
+		"a report, not disputes":      `{"findings":[]}`,
+		"a draft disputes then final": "Draft: {\"disputes\":[]}\n{\"disputes\":[" + one + "]}",
 	} {
 		if d, err := ParseDisputes([]byte(answer)); err == nil {
 			t.Errorf("%s: ParseDisputes() = %+v, nil; want an error", name, d)
