@@ -16,13 +16,13 @@ The contract: Go interface types and JSON schemas for ledger events, `graph.yaml
   `Tracker` (spec §2.2).
 - Defines the schemas: `factory.yaml`, `graph.yaml`, `pack.yaml`, ledger events (with OpenTelemetry
   `gen_ai.*` field names) and findings.
-- Defines what a realm and a project say about each other (change realm-leaf-naming): a project's
-  `umbrella.yaml` pins its graph (`graph` and `graph_version`, both or neither, such as `software` at
-  `0.1.0`), its runtime (`runtime` and `runtime_version`, both or neither, such as `niflheim-local` at
-  `0.1.0`; `leaves.yaml` carries the same pin as a `runtime` block with `realm` and `realm_version`) and, for each leaf, the realm that provides it and the leaves it consumes. A top-level `realm` or
-  `realm_version` is refused with the way to pin a graph. A build realm's `pack.yaml` offers a leaf recipe
-  (template, implementer prompt, checks) and sandbox services under the same names in every realm, and may have no graph; `leaves.yaml` is the
-  spec stage's list of a product's leaves and their realms.
+- Defines what a realm and a project say about each other (change realm-leaf-naming): a project's `umbrella.yaml` pins
+  its graph (`graph` and `graph_version`, both or neither, such as `software` at `0.1.0`), its runtime (`runtime` and
+  `runtime_version`, both or neither, such as `niflheim-local` at `0.1.0`; `leaves.yaml` carries the same pin as a
+  `runtime` block with `realm` and `realm_version`) and, for each leaf, the realm that provides it and the leaves it
+  consumes. A top-level `realm` or `realm_version` is refused with the way to pin a graph. A build realm's `pack.yaml`
+  offers a leaf recipe (template, implementer prompt, checks) and sandbox services under the same names in every
+  realm, and may have no graph; `leaves.yaml` is the spec stage's list of a product's leaves and their realms.
 - Says what a build realm needs and what a runtime realm provides (change gallery-runtime): `pack.yaml`'s
   `needs` lists the services its leaves need (`gungnir.Needs`: `postgres`, a Postgres-compatible database, and
   `s3`, an S3 API; each named once), and `provides` maps each need a runtime realm meets to one of its
