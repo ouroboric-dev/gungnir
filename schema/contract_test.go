@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io/fs"
+	"os"
 	"path"
 	"sort"
 	"strconv"
@@ -227,5 +228,34 @@ func TestDecodeAnswerTakesOnlyAWholeDocument(t *testing.T) {
 	var ve *ValidationError
 	if !errors.As(err, &ve) {
 		t.Errorf("DecodeAnswer() = %v; want a *ValidationError", err)
+	}
+}
+
+func TestDecodeChecksAPointerType(t *testing.T) {
+	data, err := os.ReadFile("testdata/contracts/design-bad-check-q2.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Decode[*Design](ContractDesign, data); err == nil || !strings.Contains(err.Error(), "used twice") {
+		t.Errorf("Decode[*Design]() error = %v; want it to say the question id is used twice", err)
+	}
+	answer := "```json\n" + `{"summary":"s","disputes":[{"id":"a","check":"c","test":"t","evidence":"e"},` +
+		`{"id":"a","check":"c","test":"t","evidence":"e"}]}` + "\n```"
+	if _, err := DecodeAnswer[*Implement](ContractImplement, []byte(answer)); err == nil || !strings.Contains(err.Error(), "used twice") {
+		t.Errorf("DecodeAnswer[*Implement]() error = %v; want it to say the finding id is used twice", err)
+	}
+}
+
+func TestDecodeAnswerTakesAFenceInsideAJSONString(t *testing.T) {
+	data, err := os.ReadFile("testdata/contracts/plan-ok-two-tasks.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(data), "```") {
+		t.Fatal("the plan fixture holds no code fence in a string")
+	}
+	p, err := DecodeAnswer[Plan](ContractPlan, []byte("```json\n"+string(data)+"\n```"))
+	if err != nil || len(p.Tasks) != 2 {
+		t.Errorf("DecodeAnswer() = %d tasks, %v; want the fenced plan read whole", len(p.Tasks), err)
 	}
 }

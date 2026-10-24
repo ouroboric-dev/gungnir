@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"reflect"
 	"sort"
 	"strings"
 	"sync"
@@ -179,7 +180,13 @@ func Decode[T any](c Contract, data []byte) (T, error) {
 	if _, err := dec.Token(); !errors.Is(err, io.EOF) {
 		return *new(T), fmt.Errorf("%s: more than one JSON document", c)
 	}
-	if ck, ok := any(&v).(checker); ok {
+	ck, ok := any(&v).(checker)
+	if !ok {
+		// T may itself be a pointer type, whose value holds the method; the strict decoding allocated it.
+		ck, ok = any(v).(checker)
+		ok = ok && !reflect.ValueOf(v).IsNil()
+	}
+	if ok {
 		if err := ck.Check(); err != nil {
 			return *new(T), fmt.Errorf("%s: %w", c, err)
 		}

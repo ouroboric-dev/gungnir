@@ -39,7 +39,8 @@ func ParseFinding(data []byte) (gungnir.Finding, error) {
 	return f, f.Validate()
 }
 
-// unfence returns the JSON of an answer that is a bare document, or one document in one code fence.
+// unfence returns the JSON of an answer that is a bare document, or one document in one code fence. A fence
+// inside the document's strings is part of the document.
 func unfence(answer string) (string, error) {
 	s := strings.TrimSpace(answer)
 	if !strings.HasPrefix(s, "```") {
@@ -51,6 +52,9 @@ func unfence(answer string) (string, error) {
 		return "", errors.New("a code fence is not closed")
 	}
 	body = strings.TrimSpace(strings.TrimSuffix(body, "```"))
+	if json.Valid([]byte(body)) {
+		return body, nil // a fence inside a JSON string is the document's text, not a second fence
+	}
 	if strings.Contains(body, "```") {
 		return "", errors.New("more than one code fence")
 	}
