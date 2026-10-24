@@ -160,8 +160,12 @@ func pointers(ve *jsonschema.ValidationError) []string {
 	return out
 }
 
+// checker is a contract type that holds a rule the JSON Schema cannot say, such as a unique id. Decode calls
+// Check after the strict decoding.
+type checker interface{ Check() error }
+
 // Decode reads data as one JSON document of the contract: validated, then decoded into T with unknown fields
-// refused. A second document, or anything but the document, is an error.
+// refused. A second document, or anything but the document, is an error. A type with a Check method is checked last.
 func Decode[T any](c Contract, data []byte) (T, error) {
 	var v T
 	if _, err := validateDoc(c, data); err != nil {
@@ -174,6 +178,11 @@ func Decode[T any](c Contract, data []byte) (T, error) {
 	}
 	if _, err := dec.Token(); !errors.Is(err, io.EOF) {
 		return *new(T), fmt.Errorf("%s: more than one JSON document", c)
+	}
+	if ck, ok := any(&v).(checker); ok {
+		if err := ck.Check(); err != nil {
+			return *new(T), fmt.Errorf("%s: %w", c, err)
+		}
 	}
 	return v, nil
 }

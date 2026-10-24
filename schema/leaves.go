@@ -11,22 +11,22 @@ import (
 type Leaves struct {
 	// Runtime pins the one runtime realm that provides the project's services, such as niflheim-local.
 	// It is optional; a file without one leaves the project's pin as it was.
-	Runtime *RuntimePin         `yaml:"runtime,omitempty"`
-	Leaves  map[string]LeafSpec `yaml:"leaves"`
+	Runtime *RuntimePin         `yaml:"runtime,omitempty" json:"runtime,omitempty"`
+	Leaves  map[string]LeafSpec `yaml:"leaves" json:"leaves"`
 }
 
 // RuntimePin names a runtime realm and its version.
 type RuntimePin struct {
-	Realm        string `yaml:"realm"`
-	RealmVersion string `yaml:"realm_version"`
+	Realm        string `yaml:"realm" json:"realm"`
+	RealmVersion string `yaml:"realm_version" json:"realm_version"`
 }
 
 // LeafSpec is one leaf of the file.
 type LeafSpec struct {
-	Realm        string   `yaml:"realm"`
-	RealmVersion string   `yaml:"realm_version"`
-	Description  string   `yaml:"description"`        // the new repo's description
-	Consumes     []string `yaml:"consumes,omitempty"` // sibling leaves this one calls
+	Realm        string   `yaml:"realm" json:"realm"`
+	RealmVersion string   `yaml:"realm_version" json:"realm_version"`
+	Description  string   `yaml:"description" json:"description"`               // the new repo's description
+	Consumes     []string `yaml:"consumes,omitempty" json:"consumes,omitempty"` // sibling leaves this one calls
 }
 
 // ParseLeaves parses leaves.yaml. A leaf's path stays inside the project and outside .git and .factory,

@@ -1,0 +1,10 @@
+{
+  "verdict": "Remove or change 1 thing.",
+  "items": [
+    {
+      "adds": "A retry library.",
+      "already_done_by": "context",
+      "smallest_change": "Drop it."
+    }
+  ]
+}

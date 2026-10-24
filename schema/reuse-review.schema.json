@@ -1,0 +1,116 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/ouroboric-dev/gungnir/schema/reuse-review.schema.json",
+  "title": "ygg.reuse-review/v1",
+  "description": "The reuse review's answer: a verdict and the items to remove or change. Odin renders the review. With blocked, the content fields are optional.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "verdict": {
+      "description": "One line, such as 'Nothing to remove.'",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1000
+    },
+    "items": {
+      "description": "The findings.",
+      "type": "array",
+      "maxItems": 200,
+      "items": {
+        "$ref": "#/$defs/item"
+      }
+    },
+    "blocked": {
+      "$ref": "#/$defs/blocked"
+    },
+    "notes": {
+      "$ref": "#/$defs/notes"
+    }
+  },
+  "if": {
+    "required": [
+      "blocked"
+    ]
+  },
+  "then": {},
+  "else": {
+    "required": [
+      "verdict",
+      "items"
+    ]
+  },
+  "$defs": {
+    "blocked": {
+      "description": "The session could not do its work, and says why.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "reason"
+      ],
+      "properties": {
+        "reason": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 16384
+        }
+      }
+    },
+    "notes": {
+      "description": "Anything the schema did not foresee.",
+      "type": "array",
+      "maxItems": 200,
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 4096
+      }
+    },
+    "cites": {
+      "description": "Owner decision ids this one comes from.",
+      "type": "array",
+      "maxItems": 50,
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 100,
+        "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+      }
+    },
+    "item": {
+      "description": "One finding.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "task",
+        "adds",
+        "already_done_by",
+        "smallest_change"
+      ],
+      "properties": {
+        "task": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "adds": {
+          "description": "What the task adds.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 16384
+        },
+        "already_done_by": {
+          "description": "What already does the job.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 16384
+        },
+        "smallest_change": {
+          "description": "The smallest change to the plan.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 16384
+        }
+      }
+    }
+  }
+}
