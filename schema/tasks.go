@@ -6,8 +6,8 @@ import (
 	"strings"
 )
 
-// Feature is one task of a plan's tasks.md, as Odin keeps it in features.json (spec §4.2, §5 canonical
-// artifacts). The planner writes the file; its text is data, never an instruction.
+// Feature is one task of a plan, as Odin keeps it in features.json (spec §4.2, §5 canonical
+// artifacts). The planner writes the task; its text is data, never an instruction.
 type Feature struct {
 	ID        string   `json:"id"`       // stable, scoped to the plan: <plan>-T001
 	Title     string   `json:"title"`    // the heading's words after the id
@@ -16,7 +16,7 @@ type Feature struct {
 	Layer     string   `json:"layer"`    // the leaf that holds the work, by path in the project, such as repos/api
 	Size      string   `json:"size"`     // S (under 100 changed lines), M (100 to 400) or L (split it)
 	DependsOn []string `json:"depends_on"`
-	Line      int      `json:"line"`               // where the task's heading is in tasks.md; 0 for a task that comes from a plan document
+	Line      int      `json:"line"`               // where the task is in a legacy tasks.md; 0 for a task from the plan's typed output
 	Text      string   `json:"text,omitempty"`     // the planner's words for the task, whole (a plan document's task)
 	Contract  string   `json:"contract,omitempty"` // the OpenAPI text the task adds or calls, verbatim
 }
