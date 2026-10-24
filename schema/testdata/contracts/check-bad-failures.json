@@ -1,0 +1,15 @@
+{
+  "check": "test",
+  "passed": true,
+  "exit_code": 0,
+  "timed_out": false,
+  "duration_ms": 4210,
+  "failures": [
+    {
+      "kind": "test",
+      "test": "TestSignup",
+      "location": "api/auth_test.go:31",
+      "message": "expected 201, got 500"
+    }
+  ]
+}

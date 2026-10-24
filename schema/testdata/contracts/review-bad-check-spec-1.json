@@ -1,0 +1,28 @@
+{
+  "findings": [
+    {
+      "id": "spec-1",
+      "source": "spec",
+      "severity": "blocker",
+      "location": "api/auth.go:42",
+      "claim": "The signup route has no throttle.",
+      "status": "open"
+    },
+    {
+      "id": "spec-2",
+      "source": "spec",
+      "severity": "blocker",
+      "location": "api/auth.go:42",
+      "claim": "The signup route has no throttle.",
+      "status": "open"
+    },
+    {
+      "id": "spec-1",
+      "source": "spec",
+      "severity": "blocker",
+      "location": "api/auth.go:42",
+      "claim": "The same id, another claim.",
+      "status": "open"
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "summary": "Fixed one finding and disputed another.",
+  "disputes": [
+    {
+      "id": "review-1",
+      "check": "test",
+      "test": "TestFindIndex",
+      "evidence": "The test passed and printed TestFindIndex; see ci/test.log:12."
+    }
+  ],
+  "notes": [
+    "The lint rung was slow."
+  ]
+}

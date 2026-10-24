@@ -1,0 +1,151 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/ouroboric-dev/gungnir/schema/check.schema.json",
+  "title": "ygg.check/v1",
+  "description": "What one check of the ladder wrote, converted from the tool's machine output by factory code. It is not an agent's output, so it has no blocked. Passed is true only when failures is empty.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "check",
+    "passed",
+    "exit_code",
+    "timed_out",
+    "duration_ms"
+  ],
+  "properties": {
+    "check": {
+      "description": "The check's name.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "passed": {
+      "description": "True only when failures is empty.",
+      "type": "boolean"
+    },
+    "exit_code": {
+      "type": "integer"
+    },
+    "timed_out": {
+      "type": "boolean"
+    },
+    "duration_ms": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "counts": {
+      "description": "The tool's own totals, where it has them.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "run",
+        "passed",
+        "failed",
+        "skipped"
+      ],
+      "properties": {
+        "run": {
+          "description": "Tests or items run.",
+          "type": "integer",
+          "minimum": 0
+        },
+        "passed": {
+          "description": "Passed.",
+          "type": "integer",
+          "minimum": 0
+        },
+        "failed": {
+          "description": "Failed.",
+          "type": "integer",
+          "minimum": 0
+        },
+        "skipped": {
+          "description": "Skipped.",
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "failures": {
+      "description": "What went wrong. Passing tests are not listed.",
+      "type": "array",
+      "maxItems": 500,
+      "items": {
+        "$ref": "#/$defs/failure"
+      }
+    },
+    "notes": {
+      "$ref": "#/$defs/notes"
+    }
+  },
+  "if": {
+    "properties": {
+      "passed": {
+        "const": true
+      }
+    },
+    "required": [
+      "passed"
+    ]
+  },
+  "then": {
+    "properties": {
+      "failures": {
+        "maxItems": 0
+      }
+    }
+  },
+  "$defs": {
+    "notes": {
+      "description": "Anything the schema did not foresee.",
+      "type": "array",
+      "maxItems": 200,
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 4096
+      }
+    },
+    "failure": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "message"
+      ],
+      "description": "One thing a check found wrong.",
+      "properties": {
+        "kind": {
+          "description": "What sort of tool found it: a fact about the tool, not a judgement.",
+          "enum": [
+            "test",
+            "lint",
+            "type",
+            "build",
+            "scan",
+            "policy",
+            "other"
+          ]
+        },
+        "test": {
+          "description": "The test's id, where there is one.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1000
+        },
+        "location": {
+          "description": "file:line or file:line:column, where the tool gives one.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1000,
+          "pattern": "^.+:[0-9]+(:[0-9]+)?$"
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 16384
+        }
+      }
+    }
+  }
+}

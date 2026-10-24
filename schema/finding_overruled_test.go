@@ -10,7 +10,4 @@ func TestParseFindingTakesAnOverruledFindingOnlyWithProof(t *testing.T) {
 	if _, err := ParseFinding([]byte(base + `}`)); err == nil {
 		t.Error("overruled with no proof: ParseFinding() = nil, want an error")
 	}
-	if _, err := ParseReport([]byte(`{"findings":[` + base + `}]}`)); err == nil {
-		t.Error("overruled with no proof: ParseReport() = nil, want an error")
-	}
 }

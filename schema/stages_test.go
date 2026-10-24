@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -34,16 +35,28 @@ func roundTrip[T any](t *testing.T, c Contract, data []byte) error {
 	return nil
 }
 
+// fixtureKinds are the file-name prefixes of testdata/contracts, one per contract that has fixtures.
+var fixtureKinds = []string{"design", "spec", "reuse", "plan", "review", "implement", "check"}
+
+// fixtureKind is one prefix of the fixtures: its contract, and the function that reads a fixture as the contract's type.
+type fixtureKind struct {
+	contract Contract
+	decode   func(*testing.T, Contract, []byte) error
+}
+
 func TestTheStageContractsReadTheirFixtures(t *testing.T) {
-	kinds := map[string]struct {
-		contract Contract
-		decode   func(*testing.T, Contract, []byte) error
-	}{
+	runFixtures(t, map[string]fixtureKind{
 		"design": {ContractDesign, roundTrip[Design]},
 		"spec":   {ContractSpec, roundTrip[Spec]},
 		"reuse":  {ContractReuseReview, roundTrip[ReuseReview]},
 		"plan":   {ContractPlan, roundTrip[Plan]},
-	}
+	})
+}
+
+// runFixtures reads the fixtures of the given prefixes and checks each against its name: -ok- is read, -bad- is
+// refused at the pointer the name holds. A fixture of another known prefix is left to the test of that prefix.
+func runFixtures(t *testing.T, kinds map[string]fixtureKind) {
+	t.Helper()
 	names, err := filepath.Glob("testdata/contracts/*.json")
 	if err != nil || len(names) == 0 {
 		t.Fatalf("no fixtures: %v", err)
@@ -54,7 +67,9 @@ func TestTheStageContractsReadTheirFixtures(t *testing.T) {
 		kind, rest, _ := strings.Cut(base, "-")
 		k, ok := kinds[kind]
 		if !ok {
-			t.Errorf("%s: no contract is named %q", name, kind)
+			if !slices.Contains(fixtureKinds, kind) {
+				t.Errorf("%s: no contract is named %q", name, kind)
+			}
 			continue
 		}
 		data, err := os.ReadFile(name)
@@ -95,7 +110,7 @@ func TestTheStageContractsReadTheirFixtures(t *testing.T) {
 			}
 		})
 	}
-	for _, kind := range []string{"design", "spec", "reuse", "plan"} {
+	for kind := range kinds {
 		if seen[kind+"-ok"] == 0 || seen[kind+"-bad"] == 0 {
 			t.Errorf("%s has %d valid and %d invalid fixtures; it needs both", kind, seen[kind+"-ok"], seen[kind+"-bad"])
 		}

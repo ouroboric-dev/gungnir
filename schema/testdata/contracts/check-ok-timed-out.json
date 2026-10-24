@@ -1,0 +1,13 @@
+{
+  "check": "test",
+  "passed": false,
+  "exit_code": -1,
+  "timed_out": true,
+  "duration_ms": 600000,
+  "failures": [
+    {
+      "kind": "other",
+      "message": "The check ran past its limit."
+    }
+  ]
+}

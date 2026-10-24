@@ -1,0 +1,14 @@
+{
+  "check": "lint",
+  "passed": false,
+  "exit_code": 1,
+  "timed_out": false,
+  "duration_ms": 4210,
+  "failures": [
+    {
+      "kind": "lint",
+      "location": "web/app.ts:10",
+      "message": "'x' is assigned a value but never used."
+    }
+  ]
+}

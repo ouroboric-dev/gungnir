@@ -1,0 +1,13 @@
+{
+  "check": "test",
+  "passed": false,
+  "exit_code": 1,
+  "timed_out": false,
+  "duration_ms": 4210,
+  "failures": [
+    {
+      "kind": "flaky",
+      "message": "m"
+    }
+  ]
+}
