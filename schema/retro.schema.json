@@ -128,7 +128,7 @@
             "type": "string",
             "minLength": 1,
             "maxLength": 410,
-            "pattern": "^(task|finding|ledger|transcript|record):\\S.{0,398}$"
+            "pattern": "^(task|finding|ledger|transcript|record):[^\\t\\n\\v\\f\\r ][^\\n\\r]{0,398}$"
           }
         }
       }

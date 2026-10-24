@@ -43,7 +43,7 @@
       ],
       "properties": {
         "amendment": {
-          "pattern": "\\S"
+          "pattern": "[^\\t\\n\\v\\f\\r ]"
         }
       }
     },

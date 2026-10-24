@@ -49,7 +49,9 @@ type Finding struct {
 	Proof    string        `json:"proof,omitempty"`
 }
 
-var location = regexp.MustCompile(`^[^\s:]+:[0-9]+(-[0-9]+)?$`)
+// location is finding.schema.json's pattern. Its classes are spelled out, as in every schema pattern, because \s
+// means another set of spaces in JavaScript, where ygg-submit checks the same pattern.
+var location = regexp.MustCompile(`^[^\t\n\v\f\r :]+:[0-9]+(-[0-9]+)?$`)
 
 // Validate refuses a finding with missing or malformed fields. A malformed finding is an agent
 // failure, never a pass (spec §4.6).

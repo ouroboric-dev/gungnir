@@ -312,3 +312,73 @@ func jsonEqual(a json.RawMessage, b string) bool {
 	var x, y any
 	return json.Unmarshal(a, &x) == nil && json.Unmarshal([]byte(b), &y) == nil && reflect.DeepEqual(x, y)
 }
+
+func TestSchemaPatternsMeanTheSameInGoAndJS(t *testing.T) {
+	// \s, \S and . differ between Go's RE2 and JavaScript's u-flag regexps (Unicode spaces, \v, \r and U+2028), so
+	// every pattern spells its classes out.
+	entries, err := fs.ReadDir(SchemaFS(), ".")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var walk func(file string, node any)
+	walk = func(file string, node any) {
+		switch v := node.(type) {
+		case map[string]any:
+			if p, ok := v["pattern"].(string); ok {
+				if bad := unportable(p); bad != "" {
+					t.Errorf("%s: pattern %q uses %s", file, p, bad)
+				}
+			}
+			for _, sub := range v {
+				walk(file, sub)
+			}
+		case []any:
+			for _, sub := range v {
+				walk(file, sub)
+			}
+		}
+	}
+	for _, e := range entries {
+		raw, err := fs.ReadFile(SchemaFS(), e.Name())
+		if err != nil {
+			t.Fatal(err)
+		}
+		var doc any
+		if err := json.Unmarshal(raw, &doc); err != nil {
+			t.Fatalf("%s: %v", e.Name(), err)
+		}
+		walk(e.Name(), doc)
+	}
+	for name, doc := range map[string]string{
+		"a blank amendment of a vertical tab": `{"deviation": true, "amendment": "\u000b"}`,
+	} {
+		if err := Validate(ContractConformance, []byte(doc)); err == nil {
+			t.Errorf("%s is valid", name)
+		}
+	}
+	check := `{"check":"lint","passed":false,"exit_code":1,"timed_out":false,"duration_ms":1,"failures":[{"kind":"lint","message":"m","location":"a\rb.go:1"}]}`
+	if err := Validate(ContractCheck, []byte(check)); err == nil {
+		t.Error("a check location with a carriage return is valid")
+	}
+}
+
+// unportable names the first escape or wildcard of a regexp that Go and JavaScript read differently, or "".
+func unportable(p string) string {
+	inClass := false
+	for i := 0; i < len(p); i++ {
+		switch c := p[i]; {
+		case c == '\\' && i+1 < len(p):
+			i++
+			if strings.ContainsRune("sSdDwWbB", rune(p[i])) {
+				return `\` + string(p[i])
+			}
+		case c == '[':
+			inClass = true
+		case c == ']':
+			inClass = false
+		case c == '.' && !inClass:
+			return "."
+		}
+	}
+	return ""
+}
