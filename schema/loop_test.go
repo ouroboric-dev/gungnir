@@ -34,13 +34,13 @@ func TestAnImplementTakesEveryDisputeFieldAtTheLimitAndNotOver(t *testing.T) {
 			`","evidence":"` + evidence + `"}]}`)
 	}
 	r := strings.Repeat
-	if _, err := Decode[Implement](ContractImplement, doc(r("i", gungnir.MaxID), r("c", gungnir.MaxDisputeCheck), r("t", gungnir.MaxDisputeTest), r("é", gungnir.MaxEvidence))); err != nil {
+	if _, err := Decode[Implement](ContractImplement, doc(r("i", gungnir.MaxID), r("c", gungnir.MaxDisputeCheck), r("t", 1000), r("é", gungnir.MaxEvidence))); err != nil {
 		t.Errorf("a dispute at every limit: %v", err)
 	}
 	for name, data := range map[string][]byte{
 		"an id too long":    doc(r("i", gungnir.MaxID+1), "c", "t", "e"),
 		"a check too long":  doc("a", r("c", gungnir.MaxDisputeCheck+1), "t", "e"),
-		"a test too long":   doc("a", "c", r("t", gungnir.MaxDisputeTest+1), "e"),
+		"a test too long":   doc("a", "c", r("t", 1001), "e"),
 		"evidence too long": doc("a", "c", "t", r("e", gungnir.MaxEvidence+1)),
 	} {
 		if _, err := Decode[Implement](ContractImplement, data); err == nil {

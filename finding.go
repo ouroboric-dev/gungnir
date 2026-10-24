@@ -98,7 +98,7 @@ type Report struct {
 // The evidence goes into the overruled finding's proof, with the check run, so it is shorter than MaxProof.
 const (
 	MaxDisputeCheck = 100
-	MaxDisputeTest  = 300
+	MaxDisputeTest  = 1000
 	MaxEvidence     = 1500
 	MaxDisputes     = 200
 )

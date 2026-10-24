@@ -28,6 +28,11 @@ func TestADisputeNeedsAllFourFieldsWithinTheLimits(t *testing.T) {
 	if err := good.Validate(); err != nil {
 		t.Fatalf("a good dispute: %v", err)
 	}
+	atLimit := good
+	atLimit.Test = strings.Repeat("t", 1000)
+	if err := atLimit.Validate(); err != nil {
+		t.Errorf("a dispute test at 1000 characters: %v", err)
+	}
 	for name, change := range map[string]func(*Dispute){
 		"no id":             func(d *Dispute) { d.ID = "" },
 		"no check":          func(d *Dispute) { d.Check = "" },
@@ -35,7 +40,7 @@ func TestADisputeNeedsAllFourFieldsWithinTheLimits(t *testing.T) {
 		"no evidence":       func(d *Dispute) { d.Evidence = "" },
 		"an id too long":    func(d *Dispute) { d.ID = strings.Repeat("i", MaxID+1) },
 		"a check too long":  func(d *Dispute) { d.Check = strings.Repeat("c", MaxDisputeCheck+1) },
-		"a test too long":   func(d *Dispute) { d.Test = strings.Repeat("t", MaxDisputeTest+1) },
+		"a test too long":   func(d *Dispute) { d.Test = strings.Repeat("t", 1001) },
 		"evidence too long": func(d *Dispute) { d.Evidence = strings.Repeat("e", MaxEvidence+1) },
 	} {
 		d := good
