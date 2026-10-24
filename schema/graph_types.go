@@ -20,8 +20,10 @@ const (
 	SourceDate         = "date"          // today's date, from Odin
 )
 
-// bodySources are the built-in sources that exist only for a task, inside a foreach body.
-var bodySources = []string{SourceTask, SourceChange, SourceOpenFindings, SourceCheckResults}
+// loopSources are the built-in sources a loop itself produces: its findings, its check results and its change.
+// Only a loop's implementer and reviewers read them, wherever the loop is; task is the one source that exists
+// only inside a foreach body.
+var loopSources = []string{SourceChange, SourceOpenFindings, SourceCheckResults}
 
 // BuiltinSources lists the built-in sources of input, in a fixed order.
 func BuiltinSources() []string {
@@ -33,8 +35,8 @@ func BuiltinSources() []string {
 // reviewer declares one output, a contract of Contracts(); every input is a node before it (in its scope: the
 // graph, or the nodes before a foreach and those before it in its body) that has an output, or a built-in
 // source, and is listed once; a loop returns the implementation (ygg.implement/v1) and its reviewers the review
-// (ygg.review/v1); task, change, open_findings and check_results are sources only inside a foreach body, and
-// record only for a node after the grade; a reviews: node counts as an input; a publish node publishes a node with an
+// (ygg.review/v1); change, open_findings and check_results are sources only for a loop and its reviewers, task only
+// inside a foreach body, and record only for a node after the grade; a reviews: node counts as an input; a publish node publishes a node with an
 // output, a tasks node reads a plan (ygg.plan/v1), and a gate's deviation_from names a conformance
 // (ygg.conformance/v1). The node a gate re-runs declares rejection, and the node a back_to names declares
 // refusal, so the reason reaches the re-run. No node id is a built-in source's name. Only agents, loops and
@@ -185,8 +187,10 @@ func (t *typeCheck) inputs(who string, input []string, n Node, visible map[strin
 		}
 		seen[in] = true
 		switch {
-		case !at.body && slices.Contains(bodySources, in):
+		case !at.body && in == SourceTask:
 			return fmt.Errorf("%s: input %s is a source only inside a foreach body", who, in)
+		case n.Kind != KindLoop && slices.Contains(loopSources, in):
+			return fmt.Errorf("%s: input %s is a source only for a loop and its reviewers", who, in)
 		case !at.graded && in == SourceRecord:
 			return fmt.Errorf("%s: input %s is a source only for a node after the grade", who, in)
 		}
