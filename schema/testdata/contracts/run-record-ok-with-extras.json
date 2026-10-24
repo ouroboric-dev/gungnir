@@ -26,7 +26,32 @@
     "unpriced_sessions": 0
   },
   "by_role": {},
-  "tasks": [],
+  "tasks": [
+    {
+      "id": "t001",
+      "title": "Sign up",
+      "leaf": "client",
+      "status": "done",
+      "usage": {
+        "in_tokens": 1,
+        "out_tokens": 2,
+        "cache_read_tokens": 0,
+        "turns": 1,
+        "cost_usd": 0,
+        "estimated_usd": 0,
+        "billed_usd": 0,
+        "sessions": 1,
+        "unpriced_sessions": 0
+      },
+      "size": "M",
+      "attempts": 2,
+      "lines": {
+        "hand_written": 100,
+        "tests": 50,
+        "generated": 30
+      }
+    }
+  ],
   "leaves": {},
   "blocked_tasks": [],
   "retries": 0,
@@ -74,40 +99,64 @@
         "model": "opus",
         "cli_version": "2.1.0",
         "reasoning": "high"
+      },
+      "planner": {
+        "agent": "codex",
+        "model": "gpt",
+        "cli_version": "0.48.0",
+        "reasoning": "medium"
       }
     },
-    "graph_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-    "prompts_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
-    "skills_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-    "realms_sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+    "graph": {
+      "software": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    "prompts": {
+      "design": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "plan": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+    },
+    "skills": {
+      "ponytail-review": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+    },
+    "realms": {
+      "midgard-react": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+    },
     "task": "client-gallery-lite",
     "task_version": "1",
-    "factory_build": "ygg 0.9.1"
+    "factory": "ygg 0.9.1"
   },
   "harness": {
-    "output_refusals": [
+    "refused": {
+      "planner codex gpt": 2
+    },
+    "repaired": {
+      "planner codex gpt": 1
+    },
+    "blocked": [
       {
-        "role": "planner",
-        "model": "gpt",
-        "count": 2
-      }
-    ],
-    "output_repairs": [
-      {
-        "role": "planner",
-        "model": "gpt",
-        "count": 1
-      }
-    ],
-    "blocked_answers": [
-      {
+        "node": "implement",
         "role": "implementer",
+        "agent": "claude",
         "model": "opus",
-        "count": 1
+        "text": "The contract names a route the spec does not have."
       }
     ],
-    "notes": 3,
-    "open_questions_left_to_spec": 2
+    "notes": [
+      {
+        "node": "design",
+        "role": "designer",
+        "agent": "claude",
+        "model": "opus",
+        "text": "The brief names no budget."
+      },
+      {
+        "node": "plan",
+        "role": "planner",
+        "agent": "codex",
+        "model": "gpt",
+        "text": "Two tasks share a migration."
+      }
+    ],
+    "questions_left_to_spec": 2
   },
   "retro": {
     "went_well": [],
