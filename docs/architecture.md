@@ -92,7 +92,7 @@ The contract: Go interface types and JSON schemas for ledger events, `graph.yaml
   joins do not type-check and names the node and the field: an input with no source before it, a `reviews:` node
   or a `publish` source with no output, a `tasks` node whose `from` is not the plan (`ygg.plan/v1`), a gate's
   `deviation_from` that is not a conformance (`ygg.conformance/v1`), a node id equal to a built-in source, a loop whose output is not `ygg.implement/v1` or a reviewer's not
-  `ygg.review/v1`, `task`, `change`, `open_findings` or `check_results` outside a foreach body or `record`
+  `ygg.review/v1`, `task` outside a foreach body, `change`, `open_findings` or `check_results` for a node that is not a loop or its reviewer, or `record`
   before the grade, and a node a gate re-runs without `rejection` in its input or a `back_to` target without
   `refusal` (`rejection` is a person's gate rejection; `refusal` the factory's: readiness, merge, pointer or the
   owner-decision check). After
