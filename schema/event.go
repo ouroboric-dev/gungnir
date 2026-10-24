@@ -62,8 +62,9 @@ func unfence(answer string) (string, error) {
 }
 
 // ParseConformance parses the design-conformance reviewer's verdict: one JSON document, bare or in one
-// code fence, as the whole answer. A verdict that can't be read, a deviation without an amendment and an
-// amendment without a deviation are errors, never a pass: the spec gate would let a deviation through (spec §4.6).
+// code fence, as the whole answer. A verdict that can't be read is an error, never a pass, and so, unless the
+// verdict is blocked, are a deviation without an amendment and an amendment without a deviation: the spec gate
+// would let a deviation through (spec §4.6).
 func ParseConformance(answer []byte) (gungnir.Conformance, error) {
 	c, err := DecodeAnswer[gungnir.Conformance](ContractConformance, answer)
 	if err != nil {

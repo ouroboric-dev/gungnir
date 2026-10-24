@@ -1,0 +1,9 @@
+{
+  "deviation": false,
+  "blocked": {
+    "reason": "The approved design is not in the workspace, so the spec cannot be compared with it."
+  },
+  "notes": [
+    "The spec names design.md, but the file is empty."
+  ]
+}

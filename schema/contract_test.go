@@ -6,6 +6,8 @@ import (
 	"io/fs"
 	"os"
 	"path"
+	"reflect"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -258,4 +260,55 @@ func TestDecodeAnswerTakesAFenceInsideAJSONString(t *testing.T) {
 	if err != nil || len(p.Tasks) != 2 {
 		t.Errorf("DecodeAnswer() = %d tasks, %v; want the fenced plan read whole", len(p.Tasks), err)
 	}
+}
+
+// agentOutputs are the contracts an agent session answers with: each carries an optional blocked and notes
+// (design §1, ruling R14).
+var agentOutputs = []Contract{
+	ContractDesign, ContractSpec, ContractConformance, ContractPlan, ContractReuseReview, ContractReview,
+	ContractImplement, ContractRetro,
+}
+
+func TestEveryAgentOutputHasTheSameBlockedAndNotes(t *testing.T) {
+	var first map[string]json.RawMessage
+	for _, c := range agentOutputs {
+		name, _ := c.SchemaFile()
+		raw, err := fs.ReadFile(SchemaFS(), name)
+		if err != nil {
+			t.Fatalf("%s: %v", c, err)
+		}
+		var doc struct {
+			Required   []string                   `json:"required"`
+			Properties map[string]json.RawMessage `json:"properties"`
+			Defs       map[string]json.RawMessage `json:"$defs"`
+		}
+		if err := json.Unmarshal(raw, &doc); err != nil {
+			t.Fatalf("%s: %v", name, err)
+		}
+		defs := map[string]json.RawMessage{}
+		for _, k := range []string{"blocked", "notes"} {
+			if !jsonEqual(doc.Properties[k], `{"$ref":"#/$defs/`+k+`"}`) {
+				t.Errorf("%s: properties/%s is %s; want a $ref to $defs/%s", name, k, doc.Properties[k], k)
+			}
+			if slices.Contains(doc.Required, k) {
+				t.Errorf("%s: %s is required; it must be optional", name, k)
+			}
+			defs[k] = doc.Defs[k]
+		}
+		if first == nil {
+			first = defs
+			continue
+		}
+		for k, d := range defs {
+			if !jsonEqual(d, string(first[k])) {
+				t.Errorf("%s: $defs/%s differs from the one in %s", name, k, schemaNames[agentOutputs[0]])
+			}
+		}
+	}
+}
+
+// jsonEqual reports whether a and b hold the same JSON value.
+func jsonEqual(a json.RawMessage, b string) bool {
+	var x, y any
+	return json.Unmarshal(a, &x) == nil && json.Unmarshal([]byte(b), &y) == nil && reflect.DeepEqual(x, y)
 }

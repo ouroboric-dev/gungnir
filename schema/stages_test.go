@@ -36,7 +36,7 @@ func roundTrip[T any](t *testing.T, c Contract, data []byte) error {
 }
 
 // fixtureKinds are the file-name prefixes of testdata/contracts, one per contract that has fixtures.
-var fixtureKinds = []string{"design", "spec", "reuse", "plan", "review", "implement", "check", "decisions", "judgement", "retro", "run-record"}
+var fixtureKinds = []string{"design", "spec", "conformance", "reuse", "plan", "review", "implement", "check", "decisions", "judgement", "retro", "run-record"}
 
 // fixtureKind is one prefix of the fixtures: its contract, and the function that reads a fixture as the contract's type.
 type fixtureKind struct {

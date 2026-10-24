@@ -1,0 +1,7 @@
+{
+  "deviation": true,
+  "amendment": "Add offline mode to the design: the spec keeps albums on the phone when the network is down.",
+  "notes": [
+    "The design does not say how long a phone keeps an album."
+  ]
+}
