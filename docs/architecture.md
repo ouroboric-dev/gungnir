@@ -97,8 +97,8 @@ The contract: Go interface types and JSON schemas for ledger events, `graph.yaml
   `refusal` (`rejection` is a person's gate rejection; `refusal` the factory's: readiness, merge, pointer or the
   owner-decision check). After
   the `grade` node only a read-only or scratch agent that outputs `ygg.retro/v1` may follow.
-- `Task.Output` names the contract a session returns, and `Result.Submitted` holds the last `submit` input the adapter
-  read. An adapter that hands outputs back through `ygg-submit` implements `Submitter`.
+- `Task.Output` names the contract a session returns, and `Result.Submitted` holds the output document of the last
+  accepted `submit`; when that call named a draft file, the adapter reads the file from the workspace. An adapter that hands outputs back through `ygg-submit` implements `Submitter`.
 
 ## Depends on
 

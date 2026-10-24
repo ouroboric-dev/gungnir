@@ -111,7 +111,9 @@ type Result struct {
 	CLIVersion     string      // the agent tool's version; may be empty
 	Failure        FailureKind // a failed result: how it failed; empty means FailureAgent
 	Output         string      // the session's final answer, whole, up to MaxOutput bytes; a reviewer's findings come in it
-	Submitted      []byte      // the last submit input the adapter read from the stream; nil for none
+	// Submitted is the output document of the last accepted submit; nil for none. When that call named a draft
+	// file, the adapter reads the file from the workspace and this holds its document.
+	Submitted []byte
 }
 
 // SessionError is a session that ended without a usable Result. Usage is what could be read of the
