@@ -165,6 +165,9 @@ func pointers(ve *jsonschema.ValidationError) []string {
 // Check after the strict decoding.
 type checker interface{ Check() error }
 
+// verifier is the same for a type whose field is named Check and so cannot have the method (CheckResult).
+type verifier interface{ Verify() error }
+
 // Decode reads data as one JSON document of the contract: validated, then decoded into T with unknown fields
 // refused. A second document, or anything but the document, is an error. A type with a Check method is checked last.
 func Decode[T any](c Contract, data []byte) (T, error) {
@@ -180,14 +183,26 @@ func Decode[T any](c Contract, data []byte) (T, error) {
 	if _, err := dec.Token(); !errors.Is(err, io.EOF) {
 		return *new(T), fmt.Errorf("%s: more than one JSON document", c)
 	}
-	ck, ok := any(&v).(checker)
-	if !ok {
+	var rule func() error
+	switch p := any(&v).(type) {
+	case checker:
+		rule = p.Check
+	case verifier:
+		rule = p.Verify
+	default:
 		// T may itself be a pointer type, whose value holds the method; the strict decoding allocated it.
-		ck, ok = any(v).(checker)
-		ok = ok && !reflect.ValueOf(v).IsNil()
+		switch p := any(v).(type) {
+		case checker:
+			rule = p.Check
+		case verifier:
+			rule = p.Verify
+		}
+		if rule != nil && reflect.ValueOf(v).IsNil() {
+			rule = nil
+		}
 	}
-	if ok {
-		if err := ck.Check(); err != nil {
+	if rule != nil {
+		if err := rule(); err != nil {
 			return *new(T), fmt.Errorf("%s: %w", c, err)
 		}
 	}

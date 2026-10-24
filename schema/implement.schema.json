@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/ouroboric-dev/gungnir/schema/implement.schema.json",
   "title": "ygg.implement/v1",
-  "description": "The implementer's answer: what it did, and the open findings it disputes, each settled by a named check of the loop that passed and printed the test (change disputed-findings). A blocked answer ends the attempt. With blocked, the summary is optional.",
+  "description": "The implementer's answer: what it did, and the open findings it disputes, each settled by a named check of the loop: a dispute holds when the check's typed result for that attempt lists the test among passed_tests and not among its failures (change disputed-findings). A blocked answer ends the attempt. With blocked, the summary is optional.",
   "type": "object",
   "additionalProperties": false,
   "properties": {

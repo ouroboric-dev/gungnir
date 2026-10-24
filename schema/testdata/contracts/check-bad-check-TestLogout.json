@@ -1,0 +1,26 @@
+{
+  "check": "test",
+  "passed": false,
+  "exit_code": 1,
+  "timed_out": false,
+  "duration_ms": 3120,
+  "counts": {
+    "run": 4,
+    "passed": 3,
+    "failed": 1,
+    "skipped": 0
+  },
+  "failures": [
+    {
+      "kind": "test",
+      "test": "TestLogout",
+      "location": "api/auth_test.go:90",
+      "message": "nil pointer dereference"
+    }
+  ],
+  "passed_tests": [
+    "TestSignup",
+    "TestLogout",
+    "TestLogin"
+  ]
+}

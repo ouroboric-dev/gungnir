@@ -74,6 +74,17 @@
         "$ref": "#/$defs/failure"
       }
     },
+    "passed_tests": {
+      "description": "The ids of the tests that ran and passed, where the tool reports them, in the same form as failures[].test. A dispute of a finding is settled on this list, so it holds only tests the tool saw pass: a test missing from it may have passed, failed or never run, and the list never holds a test that failures names.",
+      "type": "array",
+      "maxItems": 20000,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 1000
+      }
+    },
     "notes": {
       "$ref": "#/$defs/notes"
     }

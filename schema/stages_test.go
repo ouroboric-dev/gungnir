@@ -94,13 +94,13 @@ func runFixtures(t *testing.T, kinds map[string]fixtureKind) {
 				}
 				// The file name holds the JSON pointer of the failure, its slashes as dashes. A name that starts
 				// with "check-" fails in the type's Check method, which has no pointer, so the error must name
-				// the value (the duplicate question id, the outer leaf), and say "used twice" when the rule is a
-				// unique id. A name that starts with "root-" misses a required property of the document itself:
+				// the value (the duplicate question id, the outer leaf, the test), and say "used twice" when the rule is a
+				// unique id (a spec and a check say it otherwise). A name that starts with "root-" misses a required property of the document itself:
 				// the error is at "(document)" and names the property.
 				wants := []string{"/" + strings.ReplaceAll(where, "-", "/")}
 				if id, isCheck := strings.CutPrefix(where, "check-"); isCheck {
 					wants = []string{id}
-					if kind != "spec" {
+					if kind != "spec" && kind != "check" {
 						wants = append(wants, "used twice")
 					}
 				} else if prop, isRoot := strings.CutPrefix(where, "root-"); isRoot {

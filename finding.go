@@ -33,8 +33,8 @@ const (
 	FindingOpen     FindingStatus = "open"
 	FindingFixed    FindingStatus = "fixed"
 	FindingDisputed FindingStatus = "disputed"
-	// FindingOverruled closes a finding because the implementer's dispute of it held: a named check passed
-	// and printed the test. Like a fixed finding it needs proof, and it is not open.
+	// FindingOverruled closes a finding because the implementer's dispute of it held: a named check's typed result
+	// lists the test as passed. Like a fixed finding it needs proof, and it is not open.
 	FindingOverruled FindingStatus = "overruled"
 )
 
@@ -108,7 +108,7 @@ const (
 type Dispute struct {
 	ID       string `json:"id"`       // the open finding's id
 	Check    string `json:"check"`    // the name of a check the loop runs
-	Test     string `json:"test"`     // a test id the check's output must name
+	Test     string `json:"test"`     // a test id the check's typed result lists in passed_tests and not in failures
 	Evidence string `json:"evidence"` // what the test showed, and where
 }
 
