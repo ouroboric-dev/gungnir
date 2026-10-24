@@ -3,6 +3,7 @@ package schema
 import (
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -52,20 +53,24 @@ func TestTheSoftwareGraphShapeLoads(t *testing.T) {
 	if last := g.Nodes[len(g.Nodes)-1]; last.ID != "retro" || last.Output != string(ContractRetro) || g.Nodes[len(g.Nodes)-2].Kind != KindGrade {
 		t.Errorf("the last nodes = %+v, want the retro after the grade", last)
 	}
-	for _, sub := range []string{"input: [spec, design]", "output: ygg.review/v1"} {
-		if !strings.Contains(string(data), sub) {
-			t.Errorf("the fixture lacks %q", sub)
-		}
+	conformance := g.Nodes[g.Index("conformance")]
+	if !slices.Equal(conformance.Input, []string{"spec", "design"}) || conformance.Output != string(ContractConformance) {
+		t.Errorf("conformance = %+v, want input [spec design] and output %s", conformance, ContractConformance)
+	}
+	loop := g.Nodes[g.Index("tasks")].Body[0]
+	if loop.Output != string(ContractImplement) || len(loop.Reviewers) != 3 || loop.Reviewers[2].Output != string(ContractReview) {
+		t.Errorf("the loop = %+v, want the implement contract and three reviewers returning the review", loop)
 	}
 	// Each declaration is needed: dropping one no longer loads.
-	for name, c := range map[string][2]string{
-		"the plan's output":     {"    output: ygg.plan/v1\n", ""},
-		"a reviewer's output":   {"            output: ygg.review/v1\n", ""},
-		"the retro's output":    {"    output: ygg.retro/v1\n", ""},
-		"the tasks node's plan": {"    from: plan\n    leaves", "    from: spec\n    leaves"},
+	for name, c := range map[string][3]string{
+		"the plan's output":     {"    output: ygg.plan/v1\n", "", "node plan has no output"},
+		"a reviewer's output":   {"            output: ygg.review/v1\n", "", "reviewer spec-compliance has no output"},
+		"the retro's output":    {"    output: ygg.retro/v1\n", "", "retro is not one"},
+		"the tasks node's plan": {"    from: plan\n    leaves", "    from: spec\n    leaves", "outputs ygg.spec/v1, not ygg.plan/v1"},
 	} {
-		if _, err := ParseGraph("software.yaml", []byte(strings.Replace(string(data), c[0], c[1], 1))); err == nil {
-			t.Errorf("without %s: ParseGraph() = nil, want an error", name)
+		_, err := ParseGraph("software.yaml", []byte(strings.Replace(string(data), c[0], c[1], 1)))
+		if err == nil || !strings.Contains(err.Error(), c[2]) {
+			t.Errorf("without %s: ParseGraph() = %v, want an error containing %q", name, err, c[2])
 		}
 	}
 }
@@ -89,27 +94,32 @@ func TestParseGraphRefusesBadTypes(t *testing.T) {
 	const spec = "  - { id: spec, kind: agent, role: planner, prompt: s.md, scratch: true, output: ygg.spec/v1 }\n"
 	const plan = "  - { id: plan, kind: agent, role: planner, prompt: p.md, scratch: true, output: ygg.plan/v1 }\n"
 	cases := map[string]struct{ nodes, want string }{
-		"an agent without an output":        {"  - { id: a, kind: agent, role: planner, prompt: p.md }\n", "node a has no output"},
-		"a loop without an output":          {"  - { id: a, kind: loop, repo: repos/app, role: implementer, prompt: p.md, checks: [vet] }\n", "node a has no output"},
-		"an unknown contract":               {"  - { id: a, kind: agent, role: planner, prompt: p.md, output: ygg.notes/v1 }\n", "node a: output ygg.notes/v1 is not a contract"},
-		"an unknown contract on a review":   {"  - { id: a, kind: loop, repo: repos/app, role: implementer, prompt: p.md, output: ygg.implement/v1, reviewers: [{ id: r, role: reviewer, prompt: r.md, output: ygg.x/v1 }] }\n", "node a: reviewer r: output ygg.x/v1 is not a contract"},
-		"an input twice":                    {spec + "  - { id: a, kind: agent, role: planner, prompt: p.md, input: [spec, spec], output: ygg.plan/v1 }\n", "node a: input spec is listed twice"},
-		"a built-in source twice":           {"  - { id: a, kind: agent, role: planner, prompt: p.md, input: [brief, brief], output: ygg.plan/v1 }\n", "input brief is listed twice"},
-		"an input of itself":                {"  - { id: a, kind: agent, role: planner, prompt: p.md, input: [a], output: ygg.plan/v1 }\n", "node a: input a is a node that comes after it"},
-		"an input with no output":           {"  - { id: e, kind: exec, run: [echo] }\n  - { id: a, kind: agent, role: planner, prompt: p.md, input: [e], output: ygg.plan/v1 }\n", "node a: input e is a node with no output"},
-		"a node named like a source":        {"  - { id: brief, kind: agent, role: planner, prompt: p.md, output: ygg.plan/v1 }\n", "node brief: the id is a built-in source's name"},
-		"a reviewer input after the loop":   {"  - { id: a, kind: loop, repo: repos/app, role: implementer, prompt: p.md, output: ygg.implement/v1, reviewers: [{ id: r, role: reviewer, prompt: r.md, input: [later], output: ygg.review/v1 }] }\n" + "  - { id: later, kind: agent, role: planner, prompt: l.md, scratch: true, output: ygg.spec/v1 }\n", "node a: reviewer r: input later is a node that comes after it"},
-		"input on an exec node":             {"  - { id: e, kind: exec, run: [echo], input: [brief] }\n", "input"},
-		"output on a gate":                  {spec + "  - { id: g, kind: gate, gate: spec, output: ygg.spec/v1 }\n", "output"},
-		"a publish of a later node":         {"  - { id: p, kind: publish, from: spec, to: docs }\n" + spec, "scratch agent node before it"},
-		"tasks from a glob":                 {plan + "  - { id: ready, kind: tasks, from: docs/plans/tasks.md }\n", "jsonschema validation failed"},
-		"tasks from a node that is not":     {plan + "  - { id: ready, kind: tasks, from: nope }\n", "node ready: from nope is not a node before it"},
-		"tasks from the wrong contract":     {spec + "  - { id: ready, kind: tasks, from: spec }\n", "node ready: from spec outputs ygg.spec/v1, not ygg.plan/v1"},
-		"a reviews that is no earlier node": {spec + "  - { id: c, kind: agent, role: reviewer, prompt: c.md, scratch: true, reviews: nope, output: ygg.conformance/v1 }\n", "reviews"},
-		"a body input out of scope":         {"  - id: tasks\n    kind: foreach\n    over: tasks\n    nodes:\n      - { id: implement, kind: loop, realm: leaf, role: implementer, output: ygg.implement/v1 }\n" + "  - { id: after, kind: agent, role: planner, prompt: p.md, input: [implement], output: ygg.plan/v1 }\n", "node after: input implement is a node out of its scope"},
-		"a grade followed by a non-retro":   {"  - { id: score, kind: grade }\n  - { id: late, kind: agent, role: planner, prompt: p.md, scratch: true, input: [record], output: ygg.plan/v1 }\n", "last node"},
-		"a grade followed by a leaf agent":  {"  - { id: score, kind: grade }\n  - { id: late, kind: agent, role: planner, prompt: p.md, repo: repos/app, input: [record], output: ygg.retro/v1 }\n", "last node"},
-		"a grade followed by an exec":       {"  - { id: score, kind: grade }\n  - { id: late, kind: exec, run: [echo] }\n", "last node"},
+		"an agent without an output":                      {"  - { id: a, kind: agent, role: planner, prompt: p.md }\n", "node a has no output"},
+		"a loop without an output":                        {"  - { id: a, kind: loop, repo: repos/app, role: implementer, prompt: p.md, checks: [vet] }\n", "node a has no output"},
+		"an unknown contract":                             {"  - { id: a, kind: agent, role: planner, prompt: p.md, output: ygg.notes/v1 }\n", "node a: output ygg.notes/v1 is not a contract"},
+		"an unknown contract on a review":                 {"  - { id: a, kind: loop, repo: repos/app, role: implementer, prompt: p.md, output: ygg.implement/v1, reviewers: [{ id: r, role: reviewer, prompt: r.md, output: ygg.x/v1 }] }\n", "node a: reviewer r: output ygg.x/v1 is not a contract"},
+		"an input twice":                                  {spec + "  - { id: a, kind: agent, role: planner, prompt: p.md, input: [spec, spec], output: ygg.plan/v1 }\n", "node a: input spec is listed twice"},
+		"a built-in source twice":                         {"  - { id: a, kind: agent, role: planner, prompt: p.md, input: [brief, brief], output: ygg.plan/v1 }\n", "input brief is listed twice"},
+		"an input of itself":                              {"  - { id: a, kind: agent, role: planner, prompt: p.md, input: [a], output: ygg.plan/v1 }\n", "node a: input a is a node that comes after it"},
+		"an input with no output":                         {"  - { id: e, kind: exec, run: [echo] }\n  - { id: a, kind: agent, role: planner, prompt: p.md, input: [e], output: ygg.plan/v1 }\n", "node a: input e is a node with no output"},
+		"a node named like a source":                      {"  - { id: brief, kind: agent, role: planner, prompt: p.md, output: ygg.plan/v1 }\n", "node brief: the id is a built-in source's name"},
+		"a reviewer input after the loop":                 {"  - { id: a, kind: loop, repo: repos/app, role: implementer, prompt: p.md, output: ygg.implement/v1, reviewers: [{ id: r, role: reviewer, prompt: r.md, input: [later], output: ygg.review/v1 }] }\n" + "  - { id: later, kind: agent, role: planner, prompt: l.md, scratch: true, output: ygg.spec/v1 }\n", "node a: reviewer r: input later is a node that comes after it"},
+		"input on an exec node":                           {"  - { id: e, kind: exec, run: [echo], input: [brief] }\n", "jsonschema validation failed"},
+		"output on a gate":                                {spec + "  - { id: g, kind: gate, gate: spec, output: ygg.spec/v1 }\n", "jsonschema validation failed"},
+		"a loop that outputs a plan":                      {"  - { id: a, kind: loop, repo: repos/app, role: implementer, prompt: p.md, checks: [vet], output: ygg.plan/v1 }\n", "node a: output ygg.plan/v1 must be ygg.implement/v1"},
+		"a reviewer that outputs a spec":                  {"  - { id: a, kind: loop, repo: repos/app, role: implementer, prompt: p.md, output: ygg.implement/v1, reviewers: [{ id: r, role: reviewer, prompt: r.md, output: ygg.spec/v1 }] }\n", "node a: reviewer r: output ygg.spec/v1 must be ygg.review/v1"},
+		"a design node reading the task":                  {"  - { id: design, kind: agent, role: planner, prompt: p.md, scratch: true, input: [task], output: ygg.design/v1 }\n", "node design: input task is a source only inside a foreach body"},
+		"a node before the grade reading the record":      {"  - { id: design, kind: agent, role: planner, prompt: p.md, scratch: true, input: [record], output: ygg.design/v1 }\n  - { id: score, kind: grade }\n", "node design: input record is a source only for a node after the grade"},
+		"a reviewer reading the change outside a foreach": {"  - { id: a, kind: loop, repo: repos/app, role: implementer, prompt: p.md, output: ygg.implement/v1, reviewers: [{ id: r, role: reviewer, prompt: r.md, input: [change], output: ygg.review/v1 }] }\n", "node a: reviewer r: input change is a source only inside a foreach body"},
+		"a publish of a later node":                       {"  - { id: p, kind: publish, from: spec, to: docs }\n" + spec, "scratch agent node before it"},
+		"tasks from a glob":                               {plan + "  - { id: ready, kind: tasks, from: docs/plans/tasks.md }\n", "jsonschema validation failed"},
+		"tasks from a node that is not":                   {plan + "  - { id: ready, kind: tasks, from: nope }\n", "node ready: from nope is not a node before it"},
+		"tasks from the wrong contract":                   {spec + "  - { id: ready, kind: tasks, from: spec }\n", "node ready: from spec outputs ygg.spec/v1, not ygg.plan/v1"},
+		"a reviews that is no earlier node":               {spec + "  - { id: c, kind: agent, role: reviewer, prompt: c.md, scratch: true, reviews: nope, output: ygg.conformance/v1 }\n", "reviews"},
+		"a body input out of scope":                       {"  - id: tasks\n    kind: foreach\n    over: tasks\n    nodes:\n      - { id: implement, kind: loop, realm: leaf, role: implementer, output: ygg.implement/v1 }\n" + "  - { id: after, kind: agent, role: planner, prompt: p.md, input: [implement], output: ygg.plan/v1 }\n", "node after: input implement is a node out of its scope"},
+		"a grade followed by a non-retro":                 {"  - { id: score, kind: grade }\n  - { id: late, kind: agent, role: planner, prompt: p.md, scratch: true, input: [record], output: ygg.plan/v1 }\n", "last node"},
+		"a grade followed by a leaf agent":                {"  - { id: score, kind: grade }\n  - { id: late, kind: agent, role: planner, prompt: p.md, repo: repos/app, input: [record], output: ygg.retro/v1 }\n", "last node"},
+		"a grade followed by an exec":                     {"  - { id: score, kind: grade }\n  - { id: late, kind: exec, run: [echo] }\n", "last node"},
 	}
 	for name, c := range cases {
 		_, err := ParseGraph("graph.yaml", typed(c.nodes))

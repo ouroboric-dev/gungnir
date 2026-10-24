@@ -186,12 +186,12 @@ nodes:
 		t.Fatalf("ParseGraph() = %+v, %v", g, err)
 	}
 	for name, node := range map[string]string{
-		"a skill twice":      "{ id: a, kind: agent, role: r, prompt: p.md, skills: [x-y, x-y] }",
-		"a skill with a dot": "{ id: a, kind: agent, role: r, prompt: p.md, skills: [../x] }",
+		"a skill twice":      "{ id: a, kind: agent, role: r, prompt: p.md, skills: [x-y, x-y], output: ygg.plan/v1 }",
+		"a skill with a dot": "{ id: a, kind: agent, role: r, prompt: p.md, skills: [../x], output: ygg.plan/v1 }",
 		"skills on an exec":  "{ id: a, kind: exec, run: [true], skills: [x] }",
 	} {
-		if _, err := ParseGraph("graph.yaml", []byte("name: s\nversion: 1.0.0\nschema: 2\nnodes:\n  - "+node+"\n")); err == nil {
-			t.Errorf("%s: ParseGraph() = nil, want an error", name)
+		if _, err := ParseGraph("graph.yaml", []byte("name: s\nversion: 1.0.0\nschema: 2\nnodes:\n  - "+node+"\n")); err == nil || !strings.Contains(err.Error(), "jsonschema validation failed") {
+			t.Errorf("%s: ParseGraph() = %v, want a schema error", name, err)
 		}
 	}
 }

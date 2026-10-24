@@ -20,6 +20,9 @@ const (
 	SourceDate         = "date"          // today's date, from Odin
 )
 
+// bodySources are the built-in sources that exist only for a task, inside a foreach body.
+var bodySources = []string{SourceTask, SourceChange, SourceOpenFindings, SourceCheckResults}
+
 // BuiltinSources lists the built-in sources of input, in a fixed order.
 func BuiltinSources() []string {
 	return []string{SourceBrief, SourceDecisions, SourceTask, SourceChange, SourceOpenFindings, SourceCheckResults,
@@ -29,7 +32,9 @@ func BuiltinSources() []string {
 // CheckTypes checks that the graph's joins type-check: every agent node, every loop (its implementer) and every
 // reviewer declares one output, a contract of Contracts(); every input is a node before it (in its scope: the
 // graph, or the nodes before a foreach and those before it in its body) that has an output, or a built-in
-// source, and is listed once; a reviews: node counts as an input; a publish node publishes a node with an
+// source, and is listed once; a loop returns the implementation (ygg.implement/v1) and its reviewers the review
+// (ygg.review/v1); task, change, open_findings and check_results are sources only inside a foreach body, and
+// record only for a node after the grade; a reviews: node counts as an input; a publish node publishes a node with an
 // output, a tasks node reads a plan (ygg.plan/v1), and a gate's deviation_from names a conformance
 // (ygg.conformance/v1). No node id is a built-in source's name. Only agents, loops and reviewers declare input
 // and output; the graph schema refuses them on the other kinds. The error names the node and the field.
@@ -42,7 +47,7 @@ func (g *Graph) CheckTypes() error {
 		}
 		t.order[n.ID] = i
 	}
-	return t.scope(g.Nodes, map[string]string{})
+	return t.scope(g.Nodes, map[string]string{}, false)
 }
 
 // typeCheck holds the walk order of every node id, which tells a node that comes after from one that is out of
@@ -52,15 +57,18 @@ type typeCheck struct {
 }
 
 // scope checks the nodes of one scope in order. visible maps the ids of the nodes before them, those of the
-// enclosing scopes included, to their output ("" for a node with none); it is the scope's own copy.
-func (t *typeCheck) scope(nodes []Node, visible map[string]string) error {
+// enclosing scopes included, to their output ("" for a node with none); it is the scope's own copy. body says
+// the scope is a foreach body.
+func (t *typeCheck) scope(nodes []Node, visible map[string]string, body bool) error {
+	graded := false
 	for _, n := range nodes {
-		if err := t.node(n, visible); err != nil {
+		if err := t.node(n, visible, place{body: body, graded: graded}); err != nil {
 			return err
 		}
 		visible[n.ID] = n.Output
+		graded = graded || n.Kind == KindGrade
 		if n.Kind == KindForeach {
-			if err := t.scope(n.Body, cloneScope(visible)); err != nil {
+			if err := t.scope(n.Body, cloneScope(visible), true); err != nil {
 				return err
 			}
 		}
@@ -76,17 +84,26 @@ func cloneScope(m map[string]string) map[string]string {
 	return out
 }
 
-func (t *typeCheck) node(n Node, visible map[string]string) error {
+// place says where a node stands, which decides the built-in sources it may read.
+type place struct {
+	body   bool // inside a foreach body
+	graded bool // after the grade node
+}
+
+func (t *typeCheck) node(n Node, visible map[string]string, at place) error {
 	switch n.Kind {
 	case KindAgent, KindLoop:
 		if err := checkOutput("node "+n.ID, n.Output); err != nil {
 			return err
 		}
+		if n.Kind == KindLoop && n.Output != string(ContractImplement) {
+			return fmt.Errorf("node %s: output %s must be %s: a loop returns the implementation", n.ID, n.Output, ContractImplement)
+		}
 		input := n.Input
 		if n.Reviews != "" && !slices.Contains(input, n.Reviews) {
 			input = append(slices.Clone(input), n.Reviews)
 		}
-		if err := t.inputs("node "+n.ID, input, n, visible); err != nil {
+		if err := t.inputs("node "+n.ID, input, n, visible, at); err != nil {
 			return err
 		}
 		for _, r := range n.Reviewers {
@@ -94,7 +111,10 @@ func (t *typeCheck) node(n Node, visible map[string]string) error {
 			if err := checkOutput(who, r.Output); err != nil {
 				return err
 			}
-			if err := t.inputs(who, r.Input, n, visible); err != nil {
+			if r.Output != string(ContractReview) {
+				return fmt.Errorf("%s: output %s must be %s: a reviewer returns the review", who, r.Output, ContractReview)
+			}
+			if err := t.inputs(who, r.Input, n, visible, at); err != nil {
 				return err
 			}
 		}
@@ -143,21 +163,27 @@ func checkOutput(who, out string) error {
 
 // inputs checks one input list. who starts the message; n is the node the list belongs to (a loop, for its
 // reviewers).
-func (t *typeCheck) inputs(who string, input []string, n Node, visible map[string]string) error {
+func (t *typeCheck) inputs(who string, input []string, n Node, visible map[string]string, at place) error {
 	seen := map[string]bool{}
 	for _, in := range input {
 		if seen[in] {
 			return fmt.Errorf("%s: input %s is listed twice", who, in)
 		}
 		seen[in] = true
+		switch {
+		case !at.body && slices.Contains(bodySources, in):
+			return fmt.Errorf("%s: input %s is a source only inside a foreach body", who, in)
+		case !at.graded && in == SourceRecord:
+			return fmt.Errorf("%s: input %s is a source only for a node after the grade", who, in)
+		}
 		if out, ok := visible[in]; ok {
 			if out == "" {
 				return fmt.Errorf("%s: input %s is a node with no output", who, in)
 			}
 			continue
 		}
-		if at, ok := t.order[in]; ok {
-			if at >= t.order[n.ID] {
+		if pos, ok := t.order[in]; ok {
+			if pos >= t.order[n.ID] {
 				return fmt.Errorf("%s: input %s is a node that comes after it", who, in)
 			}
 			return fmt.Errorf("%s: input %s is a node out of its scope (inside a foreach body)", who, in)

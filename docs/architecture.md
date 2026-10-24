@@ -31,8 +31,8 @@ The contract: Go interface types and JSON schemas for ledger events, `graph.yaml
   `services` of the same name (`Pack.Provider(need)`). A pack with a `leaf` and `provides` or `product` is refused: a
   runtime realm provides no leaf (and, with a `sandbox`, no stack). A runtime realm's `product.start` is a regular file of the
   pack that Odin's init copies to the project root as `start.sh`.
-- Gives a graph a schema version: `graph.yaml` states `schema: 2` (required, an integer of 1 or more;
-  `schema.GraphSchema`), and a Gungnir refuses a graph that needs a higher one. It refuses schema 1 too, which
+- Gives a graph a schema version: `graph.yaml` states `schema: 2` (required, an integer; 2 is what
+  `schema.GraphSchema` reads now), and a Gungnir refuses a graph that needs a higher one. It refuses schema 1 too, which
   declares no node's input and output (change typed-boundaries). `factory.yaml` names the
   store of graph packs with `graphs:` (`dir`, a clean absolute path, as `realms:` is). A graph pack is a
   `pack.yaml` with a `graph`; `HoldsRecipe` (of `Pack`) says whether it also holds a recipe (`checks`, `leaf`,
@@ -91,7 +91,9 @@ The contract: Go interface types and JSON schemas for ledger events, `graph.yaml
   `BuiltinSources()`). `inputs:` folders are gone. `ParseGraph` calls `Graph.CheckTypes`, which refuses a graph whose
   joins do not type-check and names the node and the field: an input with no source before it, a `reviews:` node
   or a `publish` source with no output, a `tasks` node whose `from` is not the plan (`ygg.plan/v1`), a gate's
-  `deviation_from` that is not a conformance (`ygg.conformance/v1`), a node id equal to a built-in source. After
+  `deviation_from` that is not a conformance (`ygg.conformance/v1`), a node id equal to a built-in source, a loop whose output is not `ygg.implement/v1` or a reviewer's not
+  `ygg.review/v1`, and `task`, `change`, `open_findings` or `check_results` outside a foreach body or `record`
+  before the grade. After
   the `grade` node only a read-only or scratch agent that outputs `ygg.retro/v1` may follow.
 - `Task.Output` names the contract a session returns, and `Result.Submitted` holds the last `submit` input the adapter
   read. An adapter that hands outputs back through `ygg-submit` implements `Submitter`.
