@@ -13,7 +13,7 @@ name: conformance
 version: 1.0.0
 schema: 2
 nodes:
-  - { id: spec, kind: agent, role: planner, prompt: prompts/spec.md, scratch: true, input: [brief], output: ygg.spec/v1 }
+  - { id: spec, kind: agent, role: planner, prompt: prompts/spec.md, scratch: true, input: [brief, rejection], output: ygg.spec/v1 }
   - { id: conformance, kind: agent, role: reviewer, prompt: prompts/conformance.md, scratch: true, reviews: spec, input: [spec], output: ygg.conformance/v1 }
   - { id: spec-gate, kind: gate, gate: spec, reruns: spec, deviation_from: conformance }
   - { id: spec-docs, kind: publish, from: spec, to: docs }
@@ -33,7 +33,7 @@ func TestAScratchReviewerReadsTheOutputOfTheAgentItReviewsAndTheSpecGateReadsIts
 }
 
 func TestAReviewerAndTheDeviationItReportsAreRefusedWhenTheyPointAtNothingReal(t *testing.T) {
-	noScratch := strings.Replace(conformanceGraph, "id: spec, kind: agent, role: planner, prompt: prompts/spec.md, scratch: true, input: [brief], output: ygg.spec/v1", "id: spec, kind: agent, role: planner, prompt: prompts/spec.md, repo: repos/web, output: ygg.spec/v1", 1)
+	noScratch := strings.Replace(conformanceGraph, "id: spec, kind: agent, role: planner, prompt: prompts/spec.md, scratch: true, input: [brief, rejection], output: ygg.spec/v1", "id: spec, kind: agent, role: planner, prompt: prompts/spec.md, repo: repos/web, output: ygg.spec/v1", 1)
 	noScratch = strings.Replace(noScratch, "  - { id: spec-gate, kind: gate, gate: spec, reruns: spec, deviation_from: conformance }\n  - { id: spec-docs, kind: publish, from: spec, to: docs }\n", "", 1)
 	bad := map[string]struct{ graph, want string }{
 		"reviews a node that is not there":      {strings.Replace(conformanceGraph, "reviews: spec", "reviews: nope", 1), "reviews"},

@@ -13,10 +13,10 @@ name: stages
 version: 1.0.0
 schema: 2
 nodes:
-  - { id: design, kind: agent, role: planner, prompt: prompts/design.md, scratch: true, input: [brief], output: ygg.design/v1 }
+  - { id: design, kind: agent, role: planner, prompt: prompts/design.md, scratch: true, input: [brief, rejection], output: ygg.design/v1 }
   - { id: design-gate, kind: gate, gate: design }
   - { id: design-docs, kind: publish, from: design, to: docs }
-  - { id: spec, kind: agent, role: planner, prompt: prompts/spec.md, scratch: true, input: [design, brief], output: ygg.spec/v1, max_turns: 30 }
+  - { id: spec, kind: agent, role: planner, prompt: prompts/spec.md, scratch: true, input: [design, brief, rejection], output: ygg.spec/v1, max_turns: 30 }
   - { id: spec-gate, kind: gate, gate: spec }
   - { id: spec-docs, kind: publish, from: spec, to: docs }
   - { id: plan, kind: agent, role: planner, prompt: prompts/plan.md, scratch: true, input: [spec, design], output: ygg.plan/v1 }
@@ -31,7 +31,7 @@ func TestAGraphWritesDocumentsInAScratchWorkspaceAndPublishesThemIntoTheProject(
 		t.Fatalf("ParseGraph() = %v", err)
 	}
 	spec := g.Nodes[3]
-	if !spec.Scratch || spec.Repo != "" || !slices.Equal(spec.Input, []string{"design", "brief"}) || spec.Output != string(ContractSpec) {
+	if !spec.Scratch || spec.Repo != "" || !slices.Equal(spec.Input, []string{"design", "brief", "rejection"}) || spec.Output != string(ContractSpec) {
 		t.Errorf("spec = %+v", spec)
 	}
 	if pub := g.Nodes[2]; pub.Kind != KindPublish || pub.From != "design" || pub.To != "docs" {

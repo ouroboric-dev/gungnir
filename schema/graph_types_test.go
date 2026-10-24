@@ -63,10 +63,14 @@ func TestTheSoftwareGraphShapeLoads(t *testing.T) {
 	}
 	// Each declaration is needed: dropping one no longer loads.
 	for name, c := range map[string][3]string{
-		"the plan's output":     {"    output: ygg.plan/v1\n", "", "node plan has no output"},
-		"a reviewer's output":   {"            output: ygg.review/v1\n", "", "reviewer spec-compliance has no output"},
-		"the retro's output":    {"    output: ygg.retro/v1\n", "", "retro is not one"},
-		"the tasks node's plan": {"    from: plan\n    leaves", "    from: spec\n    leaves", "outputs ygg.spec/v1, not ygg.plan/v1"},
+		"the plan's output":         {"    output: ygg.plan/v1\n", "", "node plan has no output"},
+		"a reviewer's output":       {"            output: ygg.review/v1\n", "", "reviewer spec-compliance has no output"},
+		"the retro's output":        {"    output: ygg.retro/v1\n", "", "retro is not one"},
+		"the tasks node's plan":     {"    from: plan\n    leaves", "    from: spec\n    leaves", "outputs ygg.spec/v1, not ygg.plan/v1"},
+		"the design's rejection":    {"    input: [brief, decisions, rejection]\n", "    input: [brief, decisions]\n", "node design: design-gate re-runs it on a rejection"},
+		"the spec's rejection":      {"    input: [design, decisions, brief, rejection, refusal]\n", "    input: [design, decisions, brief, refusal]\n", "node spec: spec-gate re-runs it on a rejection"},
+		"the plan's refusal":        {"    input: [spec, design, decisions, rejection, refusal]\n", "    input: [spec, design, decisions, rejection]\n", "node plan: ready goes back to it with a refusal"},
+		"the implementer's refusal": {"        input: [task, open_findings, check_results, rejection, refusal]\n", "        input: [task, open_findings, check_results, rejection]\n", "node implement: land goes back to it with a refusal"},
 	} {
 		_, err := ParseGraph("software.yaml", []byte(strings.Replace(string(data), c[0], c[1], 1)))
 		if err == nil || !strings.Contains(err.Error(), c[2]) {
@@ -119,7 +123,11 @@ func TestParseGraphRefusesBadTypes(t *testing.T) {
 		"a body input out of scope":                       {"  - id: tasks\n    kind: foreach\n    over: tasks\n    nodes:\n      - { id: implement, kind: loop, realm: leaf, role: implementer, output: ygg.implement/v1 }\n" + "  - { id: after, kind: agent, role: planner, prompt: p.md, input: [implement], output: ygg.plan/v1 }\n", "node after: input implement is a node out of its scope"},
 		"a grade followed by a non-retro":                 {"  - { id: score, kind: grade }\n  - { id: late, kind: agent, role: planner, prompt: p.md, scratch: true, input: [record], output: ygg.plan/v1 }\n", "last node"},
 		"a grade followed by a leaf agent":                {"  - { id: score, kind: grade }\n  - { id: late, kind: agent, role: planner, prompt: p.md, repo: repos/app, input: [record], output: ygg.retro/v1 }\n", "last node"},
-		"a grade followed by an exec":                     {"  - { id: score, kind: grade }\n  - { id: late, kind: exec, run: [echo] }\n", "last node"},
+		"a grade followed by an exec":                     {"  - { id: score, kind: grade }\n  - { id: late, kind: exec, run: [echo] }\n", "last node"}, "a gate's named node without the rejection": {spec + "  - { id: spec-gate, kind: gate, gate: spec, reruns: spec }\n", "node spec: spec-gate re-runs it on a rejection; declare rejection in its input"},
+		"a gate's nearest node without the rejection": {"  - { id: design, kind: agent, role: planner, prompt: d.md, scratch: true, input: [brief, refusal], output: ygg.design/v1 }\n  - { id: design-gate, kind: gate, gate: design }\n", "node design: design-gate re-runs it on a rejection; declare rejection in its input"},
+		"a gate's loop without the rejection":         {"  - id: tasks\n    kind: foreach\n    over: tasks\n    nodes:\n      - { id: implement, kind: loop, realm: leaf, role: implementer, input: [task, refusal], output: ygg.implement/v1 }\n      - { id: merge-gate, kind: gate, gate: merge }\n", "node implement: merge-gate re-runs it on a rejection; declare rejection in its input"},
+		"a back_to node without the refusal":          {"  - { id: plan, kind: agent, role: planner, prompt: p.md, scratch: true, input: [rejection], output: ygg.plan/v1 }\n  - { id: ready, kind: tasks, from: plan, back_to: plan }\n", "node plan: ready goes back to it with a refusal; declare refusal in its input"},
+		"a back_to loop without the refusal":          {"  - id: tasks\n    kind: foreach\n    over: tasks\n    nodes:\n      - { id: implement, kind: loop, realm: leaf, role: implementer, input: [task, rejection], output: ygg.implement/v1 }\n      - { id: land, kind: merge, realm: leaf, back_to: implement }\n", "node implement: land goes back to it with a refusal; declare refusal in its input"},
 	}
 	for name, c := range cases {
 		_, err := ParseGraph("graph.yaml", typed(c.nodes))
@@ -142,7 +150,11 @@ func TestParseGraphLoadsTypedJoins(t *testing.T) {
 		"a read-only retro after the grade": spec + "  - { id: score, kind: grade }\n" +
 			"  - { id: retro, kind: agent, role: planner, prompt: r.md, read_only: true, input: [record], output: ygg.retro/v1 }\n" +
 			"  - { id: retro2, kind: agent, role: planner, prompt: r.md, scratch: true, input: [retro], output: ygg.retro/v1 }\n",
-		"a non-scratch agent with inputs": "  - { id: a, kind: agent, role: implementer, prompt: p.md, repo: repos/app, input: [brief], output: ygg.implement/v1 }\n",
+		"a non-scratch agent with inputs": "  - { id: a, kind: agent, role: implementer, prompt: p.md, repo: repos/app, input: [brief], output: ygg.implement/v1 }\n", "re-run targets that declare their reason": "  - { id: plan, kind: agent, role: planner, prompt: p.md, scratch: true, input: [brief, rejection, refusal], output: ygg.plan/v1 }\n" +
+			"  - { id: ready, kind: tasks, from: plan, back_to: plan }\n  - { id: plan-gate, kind: gate, gate: plan }\n" +
+			"  - id: tasks\n    kind: foreach\n    over: tasks\n    nodes:\n" +
+			"      - { id: implement, kind: loop, realm: leaf, role: implementer, input: [task, rejection, refusal], output: ygg.implement/v1 }\n" +
+			"      - { id: merge-gate, kind: gate, gate: merge }\n      - { id: land, kind: merge, realm: leaf, back_to: implement }\n",
 	}
 	for name, nodes := range cases {
 		if _, err := ParseGraph("graph.yaml", typed(nodes)); err != nil {

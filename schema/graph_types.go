@@ -14,8 +14,8 @@ const (
 	SourceChange       = "change"        // the task's diff
 	SourceOpenFindings = "open_findings" // the findings still open against the task
 	SourceCheckResults = "check_results" // the loop's check results (ygg.check/v1)
-	SourceRejection    = "rejection"     // the reason a gate or node refused, sent back
-	SourceRefusal      = "refusal"       // the refusal that sent a run back into a node
+	SourceRejection    = "rejection"     // a person's rejection at a gate: its reason and decisions file
+	SourceRefusal      = "refusal"       // the factory's refusal (readiness, merge, pointer, owner-decision check)
 	SourceRecord       = "record"        // the run record (ygg.run-record/v1)
 	SourceDate         = "date"          // today's date, from Odin
 )
@@ -36,18 +36,32 @@ func BuiltinSources() []string {
 // (ygg.review/v1); task, change, open_findings and check_results are sources only inside a foreach body, and
 // record only for a node after the grade; a reviews: node counts as an input; a publish node publishes a node with an
 // output, a tasks node reads a plan (ygg.plan/v1), and a gate's deviation_from names a conformance
-// (ygg.conformance/v1). No node id is a built-in source's name. Only agents, loops and reviewers declare input
-// and output; the graph schema refuses them on the other kinds. The error names the node and the field.
-// ParseGraph calls it after the checks of the graph's shape.
+// (ygg.conformance/v1). The node a gate re-runs declares rejection, and the node a back_to names declares
+// refusal, so the reason reaches the re-run. No node id is a built-in source's name. Only agents, loops and
+// reviewers declare input and output; the graph schema refuses them on the other kinds. The error names the node
+// and the field. ParseGraph calls it after the checks of the graph's shape, which resolve each gate's re-run.
 func (g *Graph) CheckTypes() error {
 	t := &typeCheck{order: map[string]int{}}
+	byID := map[string]Node{}
 	for i, n := range g.All() {
 		if slices.Contains(BuiltinSources(), n.ID) {
 			return fmt.Errorf("node %s: the id is a built-in source's name", n.ID)
 		}
 		t.order[n.ID] = i
+		byID[n.ID] = n
 	}
-	return t.scope(g.Nodes, map[string]string{}, false)
+	if err := t.scope(g.Nodes, map[string]string{}, false); err != nil {
+		return err
+	}
+	for _, n := range g.All() {
+		if target, ok := byID[n.Reruns]; ok && n.Kind == KindGate && !slices.Contains(target.Input, SourceRejection) {
+			return fmt.Errorf("node %s: %s re-runs it on a rejection; declare %s in its input", target.ID, n.ID, SourceRejection)
+		}
+		if target, ok := byID[n.BackTo]; ok && !slices.Contains(target.Input, SourceRefusal) {
+			return fmt.Errorf("node %s: %s goes back to it with a refusal; declare %s in its input", target.ID, n.ID, SourceRefusal)
+		}
+	}
+	return nil
 }
 
 // typeCheck holds the walk order of every node id, which tells a node that comes after from one that is out of

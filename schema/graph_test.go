@@ -16,9 +16,9 @@ name: toy
 version: 1.0.0
 schema: 2
 nodes:
-  - { id: design, kind: agent, role: planner, prompt: prompts/design.md, timeout: 10m, output: ygg.design/v1 }
+  - { id: design, kind: agent, role: planner, prompt: prompts/design.md, timeout: 10m, input: [rejection], output: ygg.design/v1 }
   - { id: design-gate, kind: gate, gate: design }
-  - { id: plan, kind: agent, role: planner, prompt: prompts/plan.md, output: ygg.plan/v1 }
+  - { id: plan, kind: agent, role: planner, prompt: prompts/plan.md, input: [rejection], output: ygg.plan/v1 }
   - { id: dor, kind: exec, run: [test, -s, plan.md] }
   - { id: plan-gate, kind: gate, gate: plan, reruns: plan }
 `
@@ -80,7 +80,7 @@ func TestParseGraphRefuses(t *testing.T) {
 
 func TestGraphSchemaKnowsEveryApprovalPoint(t *testing.T) {
 	for _, g := range gungnir.Gates() {
-		y := "name: toy\nversion: 1.0.0\nschema: 2\nnodes:\n  - { id: a, kind: agent, role: planner, prompt: p.md, output: ygg.plan/v1 }\n  - { id: g, kind: gate, gate: " + string(g) + " }\n"
+		y := "name: toy\nversion: 1.0.0\nschema: 2\nnodes:\n  - { id: a, kind: agent, role: planner, prompt: p.md, input: [rejection], output: ygg.plan/v1 }\n  - { id: g, kind: gate, gate: " + string(g) + " }\n"
 		if _, err := ParseGraph("graph.yaml", []byte(y)); err != nil {
 			t.Errorf("gate %s: %v", g, err)
 		}
@@ -92,7 +92,7 @@ name: toy
 version: 2.0.0
 schema: 2
 nodes:
-  - { id: build, kind: agent, role: implementer, prompt: p.md, repo: repos/app, output: ygg.implement/v1 }
+  - { id: build, kind: agent, role: implementer, prompt: p.md, repo: repos/app, input: [rejection], output: ygg.implement/v1 }
   - { id: test, kind: exec, run: [go, test, ./...], repo: repos/app }
   - { id: index, kind: exec, run: [make-index], repo: . }
   - { id: merge-gate, kind: gate, gate: merge }
@@ -206,6 +206,7 @@ nodes:
     repo: repos/app
     role: implementer
     prompt: prompts/build.md
+    input: [rejection]
     output: ygg.implement/v1
     skills: [ponytail-review]
     max_turns: 60

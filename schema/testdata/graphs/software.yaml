@@ -15,7 +15,7 @@ nodes:
     role: planner
     prompt: prompts/design.md
     scratch: true
-    input: [brief, decisions]
+    input: [brief, decisions, rejection]
     output: ygg.design/v1
     max_turns: 30
     timeout: 20m
@@ -31,7 +31,7 @@ nodes:
     role: planner
     prompt: prompts/spec.md
     scratch: true
-    input: [design, decisions, brief]
+    input: [design, decisions, brief, rejection, refusal]
     output: ygg.spec/v1
     max_turns: 40
     timeout: 30m
@@ -60,7 +60,7 @@ nodes:
     role: planner
     prompt: prompts/plan.md
     scratch: true
-    input: [spec, design, decisions]
+    input: [spec, design, decisions, rejection, refusal]
     output: ygg.plan/v1
     max_turns: 40
     timeout: 30m
@@ -103,7 +103,7 @@ nodes:
         kind: loop
         realm: leaf
         role: implementer
-        input: [task, open_findings, check_results, rejection]
+        input: [task, open_findings, check_results, rejection, refusal]
         output: ygg.implement/v1
         attempts: 3
         max_turns: 60

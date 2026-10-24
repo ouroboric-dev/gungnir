@@ -10,13 +10,13 @@ name: returns
 version: 1.0.0
 schema: 2
 nodes:
-  - { id: plan, kind: agent, role: planner, prompt: p.md, scratch: true, output: ygg.plan/v1 }
+  - { id: plan, kind: agent, role: planner, prompt: p.md, scratch: true, input: [refusal], output: ygg.plan/v1 }
   - { id: ready, kind: tasks, from: plan, back_to: plan, returns: 3 }
   - id: tasks
     kind: foreach
     over: tasks
     nodes:
-      - { id: implement, kind: loop, realm: leaf, role: implementer, output: ygg.implement/v1 }
+      - { id: implement, kind: loop, realm: leaf, role: implementer, input: [refusal], output: ygg.implement/v1 }
       - { id: land, kind: merge, realm: leaf, back_to: implement }
       - { id: move, kind: pointer, realm: leaf, back_to: implement, returns: 1 }
 `

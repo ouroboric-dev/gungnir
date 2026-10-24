@@ -13,7 +13,7 @@ name: gallery
 version: 1.0.0
 schema: 2
 nodes:
-  - { id: plan, kind: agent, role: planner, prompt: prompts/plan.md, repo: repos/app, output: ygg.plan/v1 }
+  - { id: plan, kind: agent, role: planner, prompt: prompts/plan.md, repo: repos/app, input: [rejection], output: ygg.plan/v1 }
   - { id: plan-gate, kind: gate, gate: plan }
   - id: tasks
     kind: foreach
@@ -23,6 +23,7 @@ nodes:
         kind: loop
         realm: leaf
         role: implementer
+        input: [rejection]
         output: ygg.implement/v1
         reviewers:
           - { id: spec, role: reviewer, prompt: prompts/review-spec.md, output: ygg.review/v1 }
