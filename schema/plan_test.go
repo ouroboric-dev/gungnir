@@ -24,7 +24,8 @@ func planFixture(t *testing.T) Plan {
 
 func TestThePlanCarriesEachTasksTextAndContract(t *testing.T) {
 	p := planFixture(t)
-	if len(p.Tasks[0].Text) != 1500 || !strings.Contains(p.Tasks[0].Contract, "/api/auth/signup") {
+	if len(p.Tasks[0].Text) != 1500 || !strings.HasPrefix(p.Tasks[0].Text, "---\ntitle: x\n---\n") ||
+		!strings.Contains(p.Tasks[0].Text, "\n## Brief\n") || !strings.Contains(p.Tasks[0].Text, "```json") || !strings.Contains(p.Tasks[0].Contract, "/api/auth/signup") {
 		t.Fatalf("the fixture lost its shape: text %d bytes, contract %q", len(p.Tasks[0].Text), p.Tasks[0].Contract)
 	}
 	fs := FeaturesFromPlan(p)
@@ -83,6 +84,11 @@ func TestReadinessBoundsTheTextAndTheContract(t *testing.T) {
 		{"no openapi", func(f *Feature) { f.Contract = "paths: {}" }, "its contract is not an OpenAPI document:"},
 		{"no paths", func(f *Feature) { f.Contract = "openapi: 3.0.3" }, "its contract is not an OpenAPI document:"},
 		{"not yaml", func(f *Feature) { f.Contract = "openapi: [" }, "its contract is not an OpenAPI document:"},
+		{"two documents", func(f *Feature) { f.Contract = openapi + "---\nfoo: bar\n" }, "holds more than one YAML document"},
+		{"broken second document", func(f *Feature) { f.Contract = openapi + "---\nfoo: [\n" }, "holds more than one YAML document"},
+		{"paths as a list", func(f *Feature) { f.Contract = "openapi: 3.0.3\npaths: [a]\n" }, "no \"paths\" mapping"},
+		{"float openapi", func(f *Feature) { f.Contract = "openapi: 3.1\npaths: {}\n" }, "no \"openapi\" version string"},
+		{"root a list", func(f *Feature) { f.Contract = "- a\n- b\n" }, "its root is not a mapping"},
 		{"size L", func(f *Feature) { f.Size = SizeL }, "size L: split it"},
 	}
 	for _, c := range cases {

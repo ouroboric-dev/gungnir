@@ -3,6 +3,7 @@ package schema
 import (
 	"errors"
 	"fmt"
+	"io"
 	"slices"
 	"strings"
 
@@ -105,19 +106,26 @@ func CheckReady(fs []Feature, leaves []string) error {
 	return nil
 }
 
-// checkOpenAPI accepts a document that parses as YAML (JSON is YAML) with a string "openapi" and a mapping "paths".
+// checkOpenAPI accepts one YAML document (JSON is YAML) that is a mapping with a string "openapi" and a mapping
+// "paths".
 func checkOpenAPI(contract string) error {
-	var doc struct {
-		OpenAPI any `yaml:"openapi"`
-		Paths   any `yaml:"paths"`
-	}
-	if err := yaml.Unmarshal([]byte(contract), &doc); err != nil {
+	dec := yaml.NewDecoder(strings.NewReader(contract))
+	var doc any
+	if err := dec.Decode(&doc); err != nil {
 		return fmt.Errorf("it does not parse as YAML: %w", err)
 	}
-	if v, ok := doc.OpenAPI.(string); !ok || v == "" {
+	var more any
+	if err := dec.Decode(&more); !errors.Is(err, io.EOF) {
+		return errors.New("it holds more than one YAML document")
+	}
+	root, ok := doc.(map[string]any)
+	if !ok {
+		return errors.New("its root is not a mapping")
+	}
+	if v, ok := root["openapi"].(string); !ok || v == "" {
 		return errors.New("it has no \"openapi\" version string")
 	}
-	if _, ok := doc.Paths.(map[string]any); !ok {
+	if _, ok := root["paths"].(map[string]any); !ok {
 		return errors.New("it has no \"paths\" mapping")
 	}
 	return nil
