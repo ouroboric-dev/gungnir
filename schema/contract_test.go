@@ -24,7 +24,8 @@ func TestEveryContractHasItsSchema(t *testing.T) {
 	for _, c := range Contracts() {
 		name, ok := c.SchemaFile()
 		if !ok {
-			continue // the schema comes with the task that adds the contract
+			t.Errorf("%s has no embedded schema", c)
+			continue
 		}
 		named[name] = true
 		raw, err := fs.ReadFile(SchemaFS(), name)

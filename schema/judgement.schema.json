@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/ouroboric-dev/gungnir/schema/judgement.schema.json",
+  "title": "ygg.judgement/v1",
+  "description": "The operator's judgement of a run, or with task of one of its tasks. An operator's file, not an agent's output, so it has no blocked.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "run",
+    "score",
+    "well",
+    "wrong",
+    "time"
+  ],
+  "properties": {
+    "run": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 100,
+      "description": "The run id."
+    },
+    "task": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 100,
+      "description": "The task judged; absent for a judgement of the whole run."
+    },
+    "score": {
+      "description": "0 (worst) to 10 (best).",
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 10
+    },
+    "well": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 16384,
+      "description": "What went well."
+    },
+    "wrong": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 16384,
+      "description": "What went wrong."
+    },
+    "time": {
+      "type": "string",
+      "minLength": 20,
+      "maxLength": 40,
+      "description": "When the judgement was given, RFC 3339.",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]+)?(Z|[+-][0-9]{2}:[0-9]{2})$"
+    }
+  }
+}

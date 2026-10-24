@@ -1,0 +1,684 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/ouroboric-dev/gungnir/schema/run-record.schema.json",
+  "title": "ygg.run-record/v1",
+  "description": "A run's experiment record: the JSON of ygg metrics --json (odin/internal/metrics/types.go), unchanged, plus the optional setup, harness, retro and judgements. Written by Odin, not an agent, so it has no blocked. The metrics integers are as typed in Go; bounds on them are left to the parity test.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "run",
+    "status",
+    "mode",
+    "graph",
+    "graph_version",
+    "factory",
+    "config_sha256",
+    "roles",
+    "realms",
+    "time",
+    "usage",
+    "by_role",
+    "tasks",
+    "leaves",
+    "blocked_tasks",
+    "retries",
+    "warnings",
+    "loops",
+    "review",
+    "findings",
+    "interventions",
+    "routing"
+  ],
+  "properties": {
+    "run": {
+      "type": "string",
+      "description": "The run id."
+    },
+    "status": {
+      "type": "string"
+    },
+    "mode": {
+      "type": "string"
+    },
+    "graph": {
+      "type": "string"
+    },
+    "graph_version": {
+      "type": "string"
+    },
+    "factory": {
+      "description": "The builds of ygg that wrote lines of the ledger, in the order they first did.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "config_sha256": {
+      "type": "string"
+    },
+    "brief_sha256": {
+      "type": "string"
+    },
+    "roles": {
+      "description": "Role name: its agent and model.",
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/$defs/setting"
+      }
+    },
+    "realms": {
+      "description": "Realm name: version.",
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "time": {
+      "$ref": "#/$defs/time"
+    },
+    "usage": {
+      "$ref": "#/$defs/usage"
+    },
+    "by_role": {
+      "description": "\"role adapter model\": what its sessions used.",
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/$defs/usage"
+      }
+    },
+    "tasks": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/task"
+      }
+    },
+    "leaves": {
+      "description": "Leaf name: its tasks.",
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/$defs/group"
+      }
+    },
+    "blocked_tasks": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/blocked_task"
+      }
+    },
+    "retries": {
+      "type": "integer"
+    },
+    "warnings": {
+      "description": "Things that do not add up.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "loops": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "finished",
+        "passed",
+        "gave_up",
+        "first_pass",
+        "avg_attempts"
+      ],
+      "properties": {
+        "finished": {
+          "type": "integer"
+        },
+        "passed": {
+          "type": "integer"
+        },
+        "gave_up": {
+          "type": "integer"
+        },
+        "first_pass": {
+          "$ref": "#/$defs/ratio"
+        },
+        "avg_attempts": {
+          "type": "number"
+        }
+      }
+    },
+    "review": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "vetoes"
+      ],
+      "properties": {
+        "vetoes": {
+          "$ref": "#/$defs/ratio"
+        },
+        "vetoes_unknown": {
+          "type": "string"
+        }
+      }
+    },
+    "findings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "raised_by_check",
+        "raised_by_review",
+        "raised_unattributed",
+        "closed",
+        "reopened",
+        "overruled",
+        "disputes_ignored"
+      ],
+      "properties": {
+        "raised_by_check": {
+          "type": "integer"
+        },
+        "raised_by_review": {
+          "type": "integer"
+        },
+        "raised_unattributed": {
+          "type": "integer"
+        },
+        "closed": {
+          "type": "integer"
+        },
+        "reopened": {
+          "type": "integer"
+        },
+        "overruled": {
+          "type": "integer"
+        },
+        "disputes_ignored": {
+          "type": "integer"
+        }
+      }
+    },
+    "interventions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "rejections",
+        "noted_approvals",
+        "escalations",
+        "items"
+      ],
+      "properties": {
+        "rejections": {
+          "type": "integer"
+        },
+        "noted_approvals": {
+          "type": "integer"
+        },
+        "escalations": {
+          "type": "integer"
+        },
+        "items": {
+          "description": "Null when there are none, as ygg metrics --json writes it.",
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "$ref": "#/$defs/item"
+          }
+        }
+      }
+    },
+    "grade": {
+      "$ref": "#/$defs/grade"
+    },
+    "routing": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "lookups",
+        "indexes"
+      ],
+      "properties": {
+        "lookups": {
+          "type": "integer"
+        },
+        "indexes": {
+          "type": "integer"
+        },
+        "bench": {
+          "type": "number"
+        },
+        "baseline": {
+          "type": "number"
+        },
+        "threshold": {
+          "type": "number"
+        }
+      }
+    },
+    "setup": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "What the run was set up with. T21 fills it.",
+      "properties": {
+        "roles": {
+          "description": "Role name: its agent, model, CLI version and reasoning.",
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/role_setup"
+          }
+        },
+        "graph_sha256": {
+          "type": "string",
+          "description": "Fingerprint of the graph."
+        },
+        "prompts_sha256": {
+          "type": "string",
+          "description": "Fingerprint of the prompts."
+        },
+        "skills_sha256": {
+          "type": "string",
+          "description": "Fingerprint of the skills."
+        },
+        "realms_sha256": {
+          "type": "string",
+          "description": "Fingerprint of the realms."
+        },
+        "task": {
+          "type": "string",
+          "description": "The benchmark task."
+        },
+        "task_version": {
+          "type": "string"
+        },
+        "factory_build": {
+          "type": "string",
+          "description": "The build of ygg."
+        }
+      }
+    },
+    "harness": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Harness health: where the harness got in a model's way. T21 fills it.",
+      "properties": {
+        "output_refusals": {
+          "description": "Outputs that broke their contract, by role and model.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/role_count"
+          }
+        },
+        "output_repairs": {
+          "description": "Refusals repaired in the session, by role and model.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/role_count"
+          }
+        },
+        "blocked_answers": {
+          "description": "Blocked answers, by role and model.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/role_count"
+          }
+        },
+        "notes": {
+          "description": "How many notes the sessions left.",
+          "type": "integer",
+          "minimum": 0
+        },
+        "open_questions_left_to_spec": {
+          "description": "Open questions the spec had to decide.",
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "retro": {
+      "$ref": "retro.schema.json"
+    },
+    "judgements": {
+      "description": "The operator's judgements of the run and its tasks.",
+      "type": "array",
+      "items": {
+        "$ref": "judgement.schema.json"
+      }
+    }
+  },
+  "$defs": {
+    "setting": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "The agent and model of a role.",
+      "required": [
+        "agent",
+        "model"
+      ],
+      "properties": {
+        "agent": {
+          "type": "string"
+        },
+        "model": {
+          "type": "string"
+        }
+      }
+    },
+    "usage": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "What sessions used.",
+      "required": [
+        "in_tokens",
+        "out_tokens",
+        "cache_read_tokens",
+        "turns",
+        "cost_usd",
+        "estimated_usd",
+        "billed_usd",
+        "sessions",
+        "unpriced_sessions"
+      ],
+      "properties": {
+        "in_tokens": {
+          "type": "integer"
+        },
+        "out_tokens": {
+          "type": "integer"
+        },
+        "cache_read_tokens": {
+          "type": "integer"
+        },
+        "turns": {
+          "type": "integer"
+        },
+        "cost_usd": {
+          "type": "number"
+        },
+        "estimated_usd": {
+          "type": "number",
+          "description": "Of cost_usd: sessions whose adapter estimated the cost."
+        },
+        "billed_usd": {
+          "type": "number",
+          "description": "Of cost_usd: what a paid API billed."
+        },
+        "sessions": {
+          "type": "integer"
+        },
+        "unpriced_sessions": {
+          "type": "integer",
+          "description": "Sessions with tokens and no cost: their cost is unknown, not zero."
+        }
+      }
+    },
+    "time": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "The run's clock, in milliseconds.",
+      "required": [
+        "elapsed_ms",
+        "active_ms",
+        "approval_wait_ms",
+        "stopped_ms"
+      ],
+      "properties": {
+        "elapsed_ms": {
+          "type": "integer"
+        },
+        "active_ms": {
+          "type": "integer"
+        },
+        "approval_wait_ms": {
+          "type": "integer",
+          "description": "From gate_pending to the decision."
+        },
+        "stopped_ms": {
+          "type": "integer",
+          "description": "From a failure, a pause or a killed process to the resume."
+        }
+      }
+    },
+    "task": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "One task of the run.",
+      "required": [
+        "id",
+        "title",
+        "leaf",
+        "status",
+        "usage"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "leaf": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "why": {
+          "type": "string"
+        },
+        "usage": {
+          "$ref": "#/$defs/usage"
+        }
+      }
+    },
+    "group": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "The tasks of one leaf.",
+      "required": [
+        "tasks",
+        "done",
+        "blocked",
+        "usage"
+      ],
+      "properties": {
+        "tasks": {
+          "type": "integer"
+        },
+        "done": {
+          "type": "integer"
+        },
+        "blocked": {
+          "type": "integer"
+        },
+        "usage": {
+          "$ref": "#/$defs/usage"
+        }
+      }
+    },
+    "blocked_task": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "task",
+        "why"
+      ],
+      "properties": {
+        "task": {
+          "type": "string"
+        },
+        "why": {
+          "type": "string"
+        }
+      }
+    },
+    "ratio": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "A count out of a total; it has no value when d is 0.",
+      "required": [
+        "n",
+        "d"
+      ],
+      "properties": {
+        "n": {
+          "type": "integer"
+        },
+        "d": {
+          "type": "integer"
+        }
+      }
+    },
+    "tally": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "passed",
+        "total"
+      ],
+      "properties": {
+        "passed": {
+          "type": "integer"
+        },
+        "total": {
+          "type": "integer"
+        }
+      }
+    },
+    "category": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "passed",
+        "total",
+        "weight"
+      ],
+      "properties": {
+        "passed": {
+          "type": "integer"
+        },
+        "total": {
+          "type": "integer"
+        },
+        "weight": {
+          "type": "number"
+        }
+      }
+    },
+    "grade": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "The hidden suite's result.",
+      "required": [
+        "task",
+        "suite",
+        "reward",
+        "fail_to_pass",
+        "pass_to_pass",
+        "categories",
+        "duration_ms",
+        "escaped_defects",
+        "tasks_given_up"
+      ],
+      "properties": {
+        "task": {
+          "type": "string"
+        },
+        "task_version": {
+          "type": "string"
+        },
+        "suite": {
+          "type": "string"
+        },
+        "reward": {
+          "type": "number"
+        },
+        "fail_to_pass": {
+          "$ref": "#/$defs/tally"
+        },
+        "pass_to_pass": {
+          "$ref": "#/$defs/tally"
+        },
+        "categories": {
+          "description": "Category name: its tally.",
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/category"
+          }
+        },
+        "duration_ms": {
+          "type": "integer"
+        },
+        "escaped_defects": {
+          "type": "integer"
+        },
+        "tasks_given_up": {
+          "type": "integer"
+        },
+        "refused": {
+          "type": "string",
+          "description": "Grading was refused, and why."
+        }
+      }
+    },
+    "item": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "node",
+        "note"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "description": "Rejection, approval with a note or escalation."
+        },
+        "node": {
+          "type": "string"
+        },
+        "note": {
+          "type": "string"
+        }
+      }
+    },
+    "role_count": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "A count for one role and model.",
+      "required": [
+        "role",
+        "model",
+        "count"
+      ],
+      "properties": {
+        "role": {
+          "type": "string"
+        },
+        "model": {
+          "type": "string"
+        },
+        "count": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "role_setup": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "One role's agent, model, CLI version and reasoning.",
+      "properties": {
+        "agent": {
+          "type": "string"
+        },
+        "model": {
+          "type": "string"
+        },
+        "cli_version": {
+          "type": "string"
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

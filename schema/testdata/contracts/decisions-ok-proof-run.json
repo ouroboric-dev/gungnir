@@ -1,0 +1,9 @@
+{
+  "decisions": [
+    {"id": "password-reset", "text": "Password reset is out of scope; a person who forgets a password asks the operator."},
+    {"id": "deletion", "text": "Deleting an account removes its notes at once.\n\nNo grace period."},
+    {"id": "email-notice", "text": "No email is sent on a password change."},
+    {"id": "storage-cap", "text": "A person stores at most 100 MB of notes."},
+    {"id": "logout-on-change", "text": "Changing the password ends every other session."}
+  ]
+}
