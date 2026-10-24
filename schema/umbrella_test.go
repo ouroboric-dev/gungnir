@@ -12,7 +12,7 @@ import (
 
 const company = `
 root: true
-owner: brunogbv
+owner: ouroboric-dev
 visibility: private
 children:
   projects/gallery: { kind: umbrella, owner: ouroboric-dev, visibility: private }
@@ -24,7 +24,7 @@ func TestParseUmbrella(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ParseUmbrella() = %v", err)
 	}
-	if !u.Root || u.Owner != "brunogbv" || u.Visibility != gungnir.VisibilityPrivate {
+	if !u.Root || u.Owner != "ouroboric-dev" || u.Visibility != gungnir.VisibilityPrivate {
 		t.Errorf("got %+v", u)
 	}
 	if got := u.Paths(); !slices.Equal(got, []string{"projects/gallery", "projects/site"}) {
@@ -52,10 +52,10 @@ func TestUmbrellaLeaksPrivateChildrenOfAPublicUmbrella(t *testing.T) {
 }
 
 func TestParseUmbrellaRefuses(t *testing.T) {
-	head := "owner: brunogbv\nvisibility: private\nchildren:\n"
+	head := "owner: ouroboric-dev\nvisibility: private\nchildren:\n"
 	cases := map[string]string{
 		"no owner":                              "visibility: private\n",
-		"an unknown visibility":                 "owner: brunogbv\nvisibility: internal\n",
+		"an unknown visibility":                 "owner: ouroboric-dev\nvisibility: internal\n",
 		"an unknown field":                      head + "  a: { kind: leaf, owner: o, visibility: private }\nsecrets: x\n",
 		"an unknown kind":                       head + "  a: { kind: folder, owner: o, visibility: private }\n",
 		"a child without owner":                 head + "  a: { kind: leaf, visibility: private }\n",
@@ -80,7 +80,7 @@ func TestUmbrellaRoundTrips(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	u.Children["projects/blog"] = Child{Kind: ChildUmbrella, Owner: "brunogbv", Visibility: gungnir.VisibilityPrivate}
+	u.Children["projects/blog"] = Child{Kind: ChildUmbrella, Owner: "ouroboric-dev", Visibility: gungnir.VisibilityPrivate}
 	if err := u.Save(dir); err != nil {
 		t.Fatal(err)
 	}
