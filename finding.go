@@ -33,8 +33,8 @@ const (
 	FindingOpen     FindingStatus = "open"
 	FindingFixed    FindingStatus = "fixed"
 	FindingDisputed FindingStatus = "disputed"
-	// FindingOverruled closes a finding because the implementer's dispute of it held: a named check passed
-	// and printed the test. Like a fixed finding it needs proof, and it is not open.
+	// FindingOverruled closes a finding because the implementer's dispute of it held: a named check's typed result
+	// lists the test as passed. Like a fixed finding it needs proof, and it is not open.
 	FindingOverruled FindingStatus = "overruled"
 )
 
@@ -49,7 +49,9 @@ type Finding struct {
 	Proof    string        `json:"proof,omitempty"`
 }
 
-var location = regexp.MustCompile(`^[^\s:]+:[0-9]+(-[0-9]+)?$`)
+// location is finding.schema.json's pattern. Its classes are spelled out, as in every schema pattern, because \s
+// means another set of spaces in JavaScript, where ygg-submit checks the same pattern.
+var location = regexp.MustCompile(`^[^\t\n\v\f\r :]+:[0-9]+(-[0-9]+)?$`)
 
 // Validate refuses a finding with missing or malformed fields. A malformed finding is an agent
 // failure, never a pass (spec §4.6).
@@ -96,7 +98,7 @@ type Report struct {
 // The evidence goes into the overruled finding's proof, with the check run, so it is shorter than MaxProof.
 const (
 	MaxDisputeCheck = 100
-	MaxDisputeTest  = 300
+	MaxDisputeTest  = 1000
 	MaxEvidence     = 1500
 	MaxDisputes     = 200
 )
@@ -106,7 +108,7 @@ const (
 type Dispute struct {
 	ID       string `json:"id"`       // the open finding's id
 	Check    string `json:"check"`    // the name of a check the loop runs
-	Test     string `json:"test"`     // a test id the check's output must name
+	Test     string `json:"test"`     // a test id the check's typed result lists in passed_tests and not in failures
 	Evidence string `json:"evidence"` // what the test showed, and where
 }
 

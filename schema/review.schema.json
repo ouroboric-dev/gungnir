@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/ouroboric-dev/gungnir/schema/review.schema.json",
+  "title": "ygg.review/v1",
+  "description": "A reviewer's answer: every finding it holds open or closes, and nothing else (spec §4.6). An empty list says it found nothing. With blocked, findings are optional.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "findings": {
+      "description": "Every finding the reviewer holds open or closes.",
+      "type": "array",
+      "maxItems": 200,
+      "items": {
+        "$ref": "finding.schema.json"
+      }
+    },
+    "blocked": {
+      "$ref": "#/$defs/blocked"
+    },
+    "notes": {
+      "$ref": "#/$defs/notes"
+    }
+  },
+  "if": {
+    "required": [
+      "blocked"
+    ]
+  },
+  "then": {},
+  "else": {
+    "required": [
+      "findings"
+    ]
+  },
+  "$defs": {
+    "blocked": {
+      "description": "The session could not do its work, and says why.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "reason"
+      ],
+      "properties": {
+        "reason": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 16384
+        }
+      }
+    },
+    "notes": {
+      "description": "Anything the schema did not foresee.",
+      "type": "array",
+      "maxItems": 200,
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 4096
+      }
+    }
+  }
+}

@@ -1,0 +1,166 @@
+# The software graph of Voluspa (spec §4.2) as schema 2 declares it (change typed-boundaries): the same nodes, with each
+# agent's, loop's and reviewer's input and output. The original header follows.
+# The software graph, held by Voluspa (spec §4.2): the stages that write documents in scratch workspaces, Odin
+# publishing them after the approval points, the plan read into tasks, the leaves created from their realms'
+# templates, and then, for every task, a loop of the implementer with the check ladder and three reviewers, the
+# merge gate, the pointer-contract gate (it judges the move after it: a contract change is a person's decision,
+# spec §3.4) and the pointer move with the acceptance run, which ships the routing indexes (spec §8). The roles
+# are the operator's factory.yaml roles: planner, implementer and reviewer.
+name: software
+version: 0.1.0
+schema: 2
+nodes:
+  - id: design
+    kind: agent
+    role: planner
+    prompt: prompts/design.md
+    scratch: true
+    input: [brief, decisions, rejection]
+    output: ygg.design/v1
+    max_turns: 30
+    timeout: 20m
+  - id: design-gate
+    kind: gate
+    gate: design
+  - id: design-docs
+    kind: publish
+    from: design
+    to: docs
+  - id: spec
+    kind: agent
+    role: planner
+    prompt: prompts/spec.md
+    scratch: true
+    input: [design, decisions, brief, rejection, refusal]
+    output: ygg.spec/v1
+    max_turns: 40
+    timeout: 30m
+  - id: conformance
+    kind: agent
+    role: reviewer
+    prompt: prompts/conformance.md
+    scratch: true
+    reviews: spec
+    input: [spec, design]
+    output: ygg.conformance/v1
+    max_turns: 15
+    # F2: the rehearsal's conformance reviewer ran out its 10-minute session on a ~62 KB review.
+    timeout: 20m
+  - id: spec-gate
+    kind: gate
+    gate: spec
+    reruns: spec
+    deviation_from: conformance
+  - id: spec-docs
+    kind: publish
+    from: spec
+    to: docs
+  - id: plan
+    kind: agent
+    role: planner
+    prompt: prompts/plan.md
+    scratch: true
+    input: [spec, design, decisions, rejection, refusal]
+    output: ygg.plan/v1
+    max_turns: 40
+    timeout: 30m
+  - id: reuse-review
+    kind: agent
+    role: reviewer
+    prompt: prompts/reuse-review.md
+    scratch: true
+    reviews: plan
+    input: [plan, spec]
+    output: ygg.reuse-review/v1
+    skills: [ponytail-review]
+    max_turns: 15
+    timeout: 10m
+  - id: plan-docs
+    kind: publish
+    from: plan
+    to: docs
+  - id: reuse-docs
+    kind: publish
+    from: reuse-review
+    to: docs
+  - id: ready
+    kind: tasks
+    from: plan
+    leaves: docs/leaves.yaml
+    back_to: plan
+  - id: leaves
+    kind: init
+    from: docs/leaves.yaml
+  - id: plan-gate
+    kind: gate
+    gate: plan
+    reruns: plan
+  - id: tasks
+    kind: foreach
+    over: tasks
+    nodes:
+      - id: implement
+        kind: loop
+        realm: leaf
+        role: implementer
+        input: [task, open_findings, check_results, rejection, refusal]
+        output: ygg.implement/v1
+        attempts: 3
+        max_turns: 60
+        timeout: 30m
+        reviewers:
+          - id: spec-compliance
+            role: reviewer
+            prompt: prompts/reviewer-spec.md
+            input: [task, change, open_findings, check_results]
+            output: ygg.review/v1
+            max_turns: 20
+            timeout: 10m
+          - id: simplicity
+            role: reviewer
+            prompt: prompts/reviewer-simplicity.md
+            input: [task, change, open_findings, check_results]
+            output: ygg.review/v1
+            skills: [ponytail-review]
+            max_turns: 20
+            timeout: 10m
+          - id: quality
+            role: reviewer
+            prompt: prompts/reviewer-quality.md
+            input: [task, change, open_findings, check_results]
+            output: ygg.review/v1
+            max_turns: 20
+            timeout: 10m
+      - id: feature-gate
+        kind: gate
+        gate: feature
+      - id: merge-gate
+        kind: gate
+        gate: merge
+      - id: land
+        kind: merge
+        realm: leaf
+        back_to: implement
+      - id: pointer-gate
+        kind: gate
+        gate: pointer
+      - id: contract-gate
+        kind: gate
+        gate: pointer-contract
+      - id: move
+        kind: pointer
+        realm: leaf
+        acceptance: [accept]
+        generated: [REPOS.md, .ygg/impact.json]
+        timeout: 25m
+        back_to: implement
+  # The retrospective runs after the grade, sees the run record only, and returns the retro.
+  - id: grade
+    kind: grade
+  - id: retro
+    kind: agent
+    role: planner
+    prompt: prompts/retro.md
+    scratch: true
+    input: [record]
+    output: ygg.retro/v1

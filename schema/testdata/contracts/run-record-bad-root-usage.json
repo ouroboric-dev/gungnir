@@ -1,0 +1,59 @@
+{
+  "run": "20261015-090000-a1b2c3",
+  "status": "running",
+  "mode": "step-by-step",
+  "graph": "software",
+  "graph_version": "1.4.0",
+  "factory": [],
+  "config_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+  "roles": {},
+  "realms": {},
+  "time": {
+    "elapsed_ms": 0,
+    "active_ms": 0,
+    "approval_wait_ms": 0,
+    "stopped_ms": 0
+  },
+  "by_role": {},
+  "tasks": [],
+  "leaves": {},
+  "blocked_tasks": [],
+  "retries": 0,
+  "warnings": [],
+  "loops": {
+    "finished": 0,
+    "passed": 0,
+    "gave_up": 0,
+    "first_pass": {
+      "n": 0,
+      "d": 0
+    },
+    "avg_attempts": 0
+  },
+  "review": {
+    "vetoes": {
+      "n": 0,
+      "d": 0
+    },
+    "vetoes_unknown": "the ledger is too old to tell"
+  },
+  "findings": {
+    "raised_by_check": 0,
+    "raised_by_review": 0,
+    "raised_unattributed": 0,
+    "closed": 0,
+    "reopened": 0,
+    "overruled": 0,
+    "disputes_ignored": 0
+  },
+  "interventions": {
+    "rejections": 0,
+    "noted_approvals": 0,
+    "escalations": 0,
+    "items": null
+  },
+  "routing": {
+    "lookups": 0,
+    "indexes": 0
+  }
+}

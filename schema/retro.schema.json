@@ -1,0 +1,137 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/ouroboric-dev/gungnir/schema/retro.schema.json",
+  "title": "ygg.retro/v1",
+  "description": "The retrospective agent's answer: what went well, what went wrong and what to change. With blocked, the lists are optional.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "went_well": {
+      "type": "array",
+      "maxItems": 200,
+      "items": {
+        "$ref": "#/$defs/item"
+      },
+      "description": "What worked, each with evidence."
+    },
+    "went_wrong": {
+      "type": "array",
+      "maxItems": 200,
+      "items": {
+        "$ref": "#/$defs/item"
+      },
+      "description": "What did not work, each with evidence."
+    },
+    "suggestions": {
+      "type": "array",
+      "maxItems": 200,
+      "items": {
+        "$ref": "#/$defs/item"
+      },
+      "description": "What to change, each with evidence."
+    },
+    "blocked": {
+      "$ref": "#/$defs/blocked"
+    },
+    "notes": {
+      "$ref": "#/$defs/notes"
+    }
+  },
+  "if": {
+    "required": [
+      "blocked"
+    ]
+  },
+  "then": {},
+  "else": {
+    "required": [
+      "went_well",
+      "went_wrong",
+      "suggestions"
+    ]
+  },
+  "$defs": {
+    "blocked": {
+      "description": "The session could not do its work, and says why.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "reason"
+      ],
+      "properties": {
+        "reason": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 16384
+        }
+      }
+    },
+    "notes": {
+      "description": "Anything the schema did not foresee.",
+      "type": "array",
+      "maxItems": 200,
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 4096
+      }
+    },
+    "item": {
+      "description": "One observation.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "category",
+        "severity",
+        "text",
+        "block",
+        "evidence"
+      ],
+      "properties": {
+        "category": {
+          "description": "The retro skill's six categories, or other.",
+          "enum": [
+            "navigation",
+            "automated-checks",
+            "coding-standards",
+            "agents-md",
+            "tool-economy",
+            "information-access",
+            "other"
+          ]
+        },
+        "severity": {
+          "enum": [
+            "high",
+            "medium",
+            "low"
+          ]
+        },
+        "text": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 16384,
+          "description": "The observation."
+        },
+        "block": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200,
+          "description": "The graph block it targets."
+        },
+        "evidence": {
+          "description": "Where to look: task:ID, finding:ID, ledger:SEQ, transcript:NAME or record:PATH.",
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 50,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 410,
+            "pattern": "^(task|finding|ledger|transcript|record):[^\\t\\n\\v\\f\\r ][^\\n\\r]{0,398}$"
+          }
+        }
+      }
+    }
+  }
+}

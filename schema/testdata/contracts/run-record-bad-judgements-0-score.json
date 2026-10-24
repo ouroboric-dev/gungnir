@@ -1,0 +1,126 @@
+{
+  "run": "20261015-090000-a1b2c3",
+  "status": "running",
+  "mode": "step-by-step",
+  "graph": "software",
+  "graph_version": "1.4.0",
+  "factory": [],
+  "config_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+  "roles": {},
+  "realms": {},
+  "time": {
+    "elapsed_ms": 0,
+    "active_ms": 0,
+    "approval_wait_ms": 0,
+    "stopped_ms": 0
+  },
+  "usage": {
+    "in_tokens": 0,
+    "out_tokens": 0,
+    "cache_read_tokens": 0,
+    "turns": 0,
+    "cost_usd": 0,
+    "estimated_usd": 0,
+    "billed_usd": 0,
+    "sessions": 0,
+    "unpriced_sessions": 0
+  },
+  "by_role": {},
+  "tasks": [],
+  "leaves": {},
+  "blocked_tasks": [],
+  "retries": 0,
+  "warnings": [],
+  "loops": {
+    "finished": 0,
+    "passed": 0,
+    "gave_up": 0,
+    "first_pass": {
+      "n": 0,
+      "d": 0
+    },
+    "avg_attempts": 0
+  },
+  "review": {
+    "vetoes": {
+      "n": 0,
+      "d": 0
+    },
+    "vetoes_unknown": "the ledger is too old to tell"
+  },
+  "findings": {
+    "raised_by_check": 0,
+    "raised_by_review": 0,
+    "raised_unattributed": 0,
+    "closed": 0,
+    "reopened": 0,
+    "overruled": 0,
+    "disputes_ignored": 0
+  },
+  "interventions": {
+    "rejections": 0,
+    "noted_approvals": 0,
+    "escalations": 0,
+    "items": null
+  },
+  "routing": {
+    "lookups": 0,
+    "indexes": 0
+  },
+  "setup": {
+    "roles": {
+      "implementer": {
+        "agent": "claude",
+        "model": "opus",
+        "cli_version": "2.1.0",
+        "reasoning": "high"
+      }
+    },
+    "graph_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "prompts_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "skills_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "realms_sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+    "task": "client-gallery-lite",
+    "task_version": "1",
+    "factory_build": "ygg 0.9.1"
+  },
+  "harness": {
+    "output_refusals": [
+      {
+        "role": "planner",
+        "model": "gpt",
+        "count": 2
+      }
+    ],
+    "output_repairs": [
+      {
+        "role": "planner",
+        "model": "gpt",
+        "count": 1
+      }
+    ],
+    "blocked_answers": [
+      {
+        "role": "implementer",
+        "model": "opus",
+        "count": 1
+      }
+    ],
+    "notes": 3,
+    "open_questions_left_to_spec": 2
+  },
+  "retro": {
+    "went_well": [],
+    "went_wrong": [],
+    "suggestions": []
+  },
+  "judgements": [
+    {
+      "run": "20261015-090000-a1b2c3",
+      "score": 11,
+      "well": "w",
+      "wrong": "x",
+      "time": "2026-10-24T18:30:00Z"
+    }
+  ]
+}

@@ -59,6 +59,12 @@ const (
 	EventDepsBump               EventName = "deps_bump"                // ygg deps bump ran a stage on a product
 
 	EventDisputeIgnored EventName = "dispute_ignored" // an implementer's dispute of a finding could not be used (B-114); Note says why
+
+	// The typed boundaries (change typed-boundaries). Node and Attempt say where; Note holds the contract and the first error.
+	EventOutputRefused  EventName = "output_refused"  // a session's output broke its contract and went back for repair
+	EventOutputRepaired EventName = "output_repaired" // a refused output was repaired in a repair session (T15)
+	EventJudged         EventName = "judged"          // the operator scored a run or a task (ygg score); Task is set for a task
+	EventRetroWritten   EventName = "retro_written"   // the retrospective agent's output was read and stored in the record
 )
 
 // FindingOrigin says what raised a finding, so a metric can tell a reviewer's veto from a failed check.
@@ -79,7 +85,8 @@ func Events() []EventName {
 		EventRetry, EventRunPaused, EventFindingRaised, EventFindingClosed, EventFindingReopened, EventFindingOverruled,
 		EventRealmLoaded, EventDocsPublished, EventTasksReady, EventNodeReturned, EventTaskStarted, EventTaskDone,
 		EventTaskBlocked, EventConformanceChecked, EventGradeStarted, EventGradeFinished, EventGradeRefused,
-		EventRoutingIndexBuilt, EventPointerContractChecked, EventDepsChecked, EventDepsBump, EventDisputeIgnored}
+		EventRoutingIndexBuilt, EventPointerContractChecked, EventDepsChecked, EventDepsBump, EventDisputeIgnored,
+		EventOutputRefused, EventOutputRepaired, EventJudged, EventRetroWritten}
 }
 
 // Event is one ledger line. Fields follow OpenTelemetry's GenAI attribute names (gen_ai.*) where

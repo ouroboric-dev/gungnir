@@ -1,0 +1,13 @@
+{
+  "check": "test",
+  "passed": false,
+  "exit_code": 1,
+  "timed_out": false,
+  "duration_ms": 4210,
+  "counts": {
+    "run": 1,
+    "passed": 0,
+    "failed": -1,
+    "skipped": 0
+  }
+}

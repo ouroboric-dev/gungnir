@@ -80,12 +80,13 @@ func TestFindingValidate(t *testing.T) {
 		t.Fatalf("good finding: %v", err)
 	}
 	bad := map[string]func(*Finding){
-		"no location":           func(f *Finding) { f.Location = "" },
-		"location without line": func(f *Finding) { f.Location = "api/auth.go" },
-		"unknown severity":      func(f *Finding) { f.Severity = "critical" },
-		"fixed with no proof":   func(f *Finding) { f.Status = FindingFixed },
-		"unknown status":        func(f *Finding) { f.Status = "closed" },
-		"no id":                 func(f *Finding) { f.ID = "" },
+		"no location":                    func(f *Finding) { f.Location = "" },
+		"location without line":          func(f *Finding) { f.Location = "api/auth.go" },
+		"a vertical tab in the location": func(f *Finding) { f.Location = "api/a\vuth.go:1" },
+		"unknown severity":               func(f *Finding) { f.Severity = "critical" },
+		"fixed with no proof":            func(f *Finding) { f.Status = FindingFixed },
+		"unknown status":                 func(f *Finding) { f.Status = "closed" },
+		"no id":                          func(f *Finding) { f.ID = "" },
 	}
 	for name, change := range bad {
 		f := good

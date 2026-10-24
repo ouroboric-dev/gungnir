@@ -10,7 +10,7 @@
     "id": { "type": "string", "minLength": 1, "maxLength": 100 },
     "source": { "type": "string", "minLength": 1, "maxLength": 100 },
     "severity": { "enum": ["blocker", "major", "minor"] },
-    "location": { "type": "string", "maxLength": 300, "pattern": "^[^\\s:]+:[0-9]+(-[0-9]+)?$" },
+    "location": { "type": "string", "maxLength": 300, "pattern": "^[^\\t\\n\\v\\f\\r :]+:[0-9]+(-[0-9]+)?$" },
     "claim": { "type": "string", "minLength": 1, "maxLength": 4000 },
     "status": { "enum": ["open", "fixed", "disputed", "overruled"] },
     "proof": { "type": "string", "minLength": 1, "maxLength": 2000 }

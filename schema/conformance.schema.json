@@ -2,15 +2,82 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/ouroboric-dev/gungnir/schema/conformance.schema.json",
   "title": "a design-conformance verdict",
-  "description": "The design-conformance reviewer's whole answer: whether the spec deviates from the approved design, and the amendment it proposes when it does (spec §4.2).",
+  "description": "The design-conformance reviewer's whole answer: whether the spec deviates from the approved design, and the amendment it proposes when it does (spec §4.2). With blocked, the verdict and the amendment are optional.",
   "type": "object",
   "additionalProperties": false,
-  "required": ["deviation"],
   "properties": {
-    "deviation": { "type": "boolean" },
-    "amendment": { "type": "string", "maxLength": 8000 }
+    "deviation": {
+      "type": "boolean"
+    },
+    "amendment": {
+      "type": "string",
+      "maxLength": 8000
+    },
+    "blocked": {
+      "$ref": "#/$defs/blocked"
+    },
+    "notes": {
+      "$ref": "#/$defs/notes"
+    }
   },
-  "if": { "properties": { "deviation": { "const": true } } },
-  "then": { "required": ["amendment"], "properties": { "amendment": { "pattern": "\\S" } } },
-  "else": { "not": { "required": ["amendment"] } }
+  "if": {
+    "required": [
+      "blocked"
+    ]
+  },
+  "then": {},
+  "else": {
+    "required": [
+      "deviation"
+    ],
+    "if": {
+      "properties": {
+        "deviation": {
+          "const": true
+        }
+      }
+    },
+    "then": {
+      "required": [
+        "amendment"
+      ],
+      "properties": {
+        "amendment": {
+          "pattern": "[^\\t\\n\\v\\f\\r ]"
+        }
+      }
+    },
+    "else": {
+      "properties": {
+        "amendment": false
+      }
+    }
+  },
+  "$defs": {
+    "blocked": {
+      "description": "The session could not do its work, and says why.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "reason"
+      ],
+      "properties": {
+        "reason": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 16384
+        }
+      }
+    },
+    "notes": {
+      "description": "Anything the schema did not foresee.",
+      "type": "array",
+      "maxItems": 200,
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 4096
+      }
+    }
+  }
 }

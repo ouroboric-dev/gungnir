@@ -1,0 +1,10 @@
+{
+  "summary": "Done.",
+  "disputes": [
+    {
+      "id": "review-1",
+      "check": "test",
+      "evidence": "e"
+    }
+  ]
+}

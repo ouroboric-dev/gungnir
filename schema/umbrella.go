@@ -142,17 +142,20 @@ func (u *Umbrella) checkRealms(file string) error {
 			seen[q] = true
 		}
 	}
-	return u.checkRing(file)
+	if err := u.checkRing(); err != nil {
+		return fmt.Errorf("%s: %w", file, err)
+	}
+	return nil
 }
 
 // checkRing refuses leaves that consume each other, directly or through others.
-func (u *Umbrella) checkRing(file string) error {
+func (u *Umbrella) checkRing() error {
 	state := map[string]int{} // 1: on the path being walked, 2: done
 	var walk func(p string, path []string) error
 	walk = func(p string, path []string) error {
 		switch state[p] {
 		case 1:
-			return fmt.Errorf("%s: leaves consume each other in a ring: %s", file, strings.Join(append(path, p), " -> "))
+			return fmt.Errorf("leaves consume each other in a ring: %s", strings.Join(append(path, p), " -> "))
 		case 2:
 			return nil
 		}

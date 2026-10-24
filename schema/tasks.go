@@ -16,7 +16,9 @@ type Feature struct {
 	Layer     string   `json:"layer"`    // the leaf that holds the work, by path in the project, such as repos/api
 	Size      string   `json:"size"`     // S (under 100 changed lines), M (100 to 400) or L (split it)
 	DependsOn []string `json:"depends_on"`
-	Line      int      `json:"line"` // where the task's heading is in tasks.md
+	Line      int      `json:"line"`               // where the task's heading is in tasks.md; 0 for a task that comes from a plan document
+	Text      string   `json:"text,omitempty"`     // the planner's words for the task, whole (a plan document's task)
+	Contract  string   `json:"contract,omitempty"` // the OpenAPI text the task adds or calls, verbatim
 }
 
 // Task sizes of the Definition of Ready.
@@ -31,6 +33,13 @@ const (
 const (
 	MaxTasksFile = 1 << 20
 	MaxTasks     = 200
+)
+
+// MaxTaskText and MaxTaskContract bound a task's text and contract, in bytes. Odin never cuts one: readiness
+// refuses an over-size task so the planner splits it.
+const (
+	MaxTaskText     = 64 << 10
+	MaxTaskContract = 64 << 10
 )
 
 var (
@@ -59,6 +68,9 @@ func (f Feature) Slug() string {
 // parses (the readiness check refuses it, with the reasons); an id used twice, a field given twice, a
 // criterion outside a field, an unclosed fence, a file with no task and a file over MaxTasksFile are
 // errors.
+//
+// Deprecated: reads the tasks.md of a run from before change typed-boundaries; nothing new calls it (T18 removes
+// it).
 func ParseTasks(file string, data []byte) ([]Feature, error) {
 	if len(data) > MaxTasksFile {
 		return nil, fmt.Errorf("%s: %d bytes is more than the %d a tasks file may hold", file, len(data), MaxTasksFile)

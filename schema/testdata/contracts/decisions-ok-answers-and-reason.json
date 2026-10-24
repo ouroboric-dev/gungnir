@@ -1,0 +1,5 @@
+{
+  "decisions": [{"id": "storage-cap", "text": "A person stores at most 100 MB of notes."}],
+  "answers": [{"question": "q1", "text": "Yes, the first user is the admin."}, {"question": "q12", "text": "No."}],
+  "reason": "The design leaves the storage cap open."
+}

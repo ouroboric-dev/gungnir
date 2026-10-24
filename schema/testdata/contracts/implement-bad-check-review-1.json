@@ -1,0 +1,17 @@
+{
+  "summary": "Done.",
+  "disputes": [
+    {
+      "id": "review-1",
+      "check": "test",
+      "test": "T",
+      "evidence": "e"
+    },
+    {
+      "id": "review-1",
+      "check": "lint",
+      "test": "no-unused",
+      "evidence": "e"
+    }
+  ]
+}

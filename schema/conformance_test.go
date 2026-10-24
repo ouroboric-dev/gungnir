@@ -2,6 +2,7 @@ package schema
 
 import (
 	"encoding/json"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -13,10 +14,11 @@ func TestParseConformanceReadsAVerdictExactly(t *testing.T) {
 		`{"deviation": false}`:                                                {},
 		"```json\n{\"deviation\": false}\n```":                                {},
 		`{"deviation": true, "amendment": "Add offline mode to the design."}`: {Deviation: true, Amendment: "Add offline mode to the design."},
+		`{"blocked": {"reason": "The design is missing."}, "notes": ["n"]}`:   {Blocked: &gungnir.Blocked{Reason: "The design is missing."}, Notes: []string{"n"}},
 	}
 	for answer, want := range ok {
 		got, err := ParseConformance([]byte(answer))
-		if err != nil || got != want {
+		if err != nil || !reflect.DeepEqual(got, want) {
 			t.Errorf("ParseConformance(%q) = %+v, %v; want %+v", answer, got, err, want)
 		}
 	}
@@ -37,6 +39,12 @@ func TestParseConformanceReadsAVerdictExactly(t *testing.T) {
 			t.Errorf("%s: ParseConformance() = %+v, nil; want an error (a verdict nobody can read is not a pass)", name, got)
 		}
 	}
+}
+
+func TestTheConformanceContractReadsItsFixtures(t *testing.T) {
+	runFixtures(t, map[string]fixtureKind{
+		"conformance": {ContractConformance, roundTrip[gungnir.Conformance]},
+	})
 }
 
 func TestTheLedgerRecordsAConformanceCheck(t *testing.T) {

@@ -1,0 +1,22 @@
+{
+  "title": "Photo Share",
+  "slug": "photo-share",
+  "goal": "A family keeps photos and shares albums.",
+  "decisions": [],
+  "risks": [],
+  "tasks": [
+    {
+      "id": "photo-share-T001",
+      "title": "Task 1",
+      "criteria": [
+        "It does the first thing.",
+        "It does the second thing."
+      ],
+      "named_test": "api/auth_test.go:TestSignup",
+      "layer": "repos/api",
+      "size": "L",
+      "depends_on": [],
+      "text": "The signup route takes an email and a password and makes an account. The signup route takes an email and a password and makes an account. The signup route takes an email and a password and makes an account. The signup route takes an email and a password and makes an account. The signup route takes an email and a password and makes an account. The signup route takes an email and a password and makes an account. The signup route takes an email and a password and makes an account. The signup route takes an email and a password and makes an account. The signup route takes an email and a password and makes an account. The signup route takes an email and a password and makes an account. The signup route takes an email and a password and makes an account. The signup route takes an email and a password and makes an account. The signup route takes an email and a password and makes an account. The signup route takes an email and a password and makes an account. The signup route takes an email and a password and makes an account. The signup route takes an email and a password and makes an account. The signup route takes an email and a password and makes an account. The signup route takes an email and a password and makes an account. The signup route takes an email and a password and makes an account. The signup route takes an email and a password and makes an account. The signup route takes an email and a password and makes an account. The signup route takes an email and a password and "
+    }
+  ]
+}

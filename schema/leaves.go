@@ -11,52 +11,61 @@ import (
 type Leaves struct {
 	// Runtime pins the one runtime realm that provides the project's services, such as niflheim-local.
 	// It is optional; a file without one leaves the project's pin as it was.
-	Runtime *RuntimePin         `yaml:"runtime,omitempty"`
-	Leaves  map[string]LeafSpec `yaml:"leaves"`
+	Runtime *RuntimePin         `yaml:"runtime,omitempty" json:"runtime,omitempty"`
+	Leaves  map[string]LeafSpec `yaml:"leaves" json:"leaves"`
 }
 
 // RuntimePin names a runtime realm and its version.
 type RuntimePin struct {
-	Realm        string `yaml:"realm"`
-	RealmVersion string `yaml:"realm_version"`
+	Realm        string `yaml:"realm" json:"realm"`
+	RealmVersion string `yaml:"realm_version" json:"realm_version"`
 }
 
 // LeafSpec is one leaf of the file.
 type LeafSpec struct {
-	Realm        string   `yaml:"realm"`
-	RealmVersion string   `yaml:"realm_version"`
-	Description  string   `yaml:"description"`        // the new repo's description
-	Consumes     []string `yaml:"consumes,omitempty"` // sibling leaves this one calls
+	Realm        string   `yaml:"realm" json:"realm"`
+	RealmVersion string   `yaml:"realm_version" json:"realm_version"`
+	Description  string   `yaml:"description" json:"description"`              // the new repo's description
+	Consumes     []string `yaml:"consumes,omitempty" json:"consumes,omitzero"` // sibling leaves this one calls
 }
 
-// ParseLeaves parses leaves.yaml. A leaf's path stays inside the project and outside .git and .factory,
-// no leaf is inside another, and no leaf consumes itself, a leaf twice, or another in a ring. A leaf may
-// consume one the file doesn't list: an earlier run made it, and Odin checks the project has it.
+// ParseLeaves parses leaves.yaml and checks it (Check).
 func ParseLeaves(file string, data []byte) (*Leaves, error) {
 	var l Leaves
 	if err := parseYAML(file, "leaves.schema.json", data, &l); err != nil {
 		return nil, err
 	}
+	if err := l.Check(); err != nil {
+		return nil, fmt.Errorf("%s: %w", file, err)
+	}
+	return &l, nil
+}
+
+// Check holds the rules of a leaves file that its JSON Schema cannot say. A leaf's path stays inside the
+// project and outside .git and .factory, no leaf is inside another, and no leaf consumes itself, a leaf twice,
+// or another in a ring. A leaf may consume one the file doesn't list: an earlier run made it, and Odin checks
+// the project has it.
+func (l *Leaves) Check() error {
 	paths := l.Paths()
 	for i, p := range paths {
 		if !projectPath(p) {
-			return nil, fmt.Errorf("%s: leaf %q must be a path inside the project, outside .git and .factory", file, p)
+			return fmt.Errorf("leaf %q must be a path inside the project, outside .git and .factory", p)
 		}
 		// '-' and '.' sort before '/', so the path before p may be a sibling: check every earlier path.
 		for _, outer := range paths[:i] {
 			if strings.HasPrefix(p, outer+"/") {
-				return nil, fmt.Errorf("%s: leaf %q is inside leaf %q", file, p, outer)
+				return fmt.Errorf("leaf %q is inside leaf %q", p, outer)
 			}
 		}
 		seen := map[string]bool{}
 		for _, q := range l.Leaves[p].Consumes {
 			switch {
 			case !filepath.IsLocal(q):
-				return nil, fmt.Errorf("%s: leaf %s consumes %q, which must be a path inside the project", file, p, q)
+				return fmt.Errorf("leaf %s consumes %q, which must be a path inside the project", p, q)
 			case q == p:
-				return nil, fmt.Errorf("%s: leaf %s consumes itself", file, p)
+				return fmt.Errorf("leaf %s consumes itself", p)
 			case seen[q]:
-				return nil, fmt.Errorf("%s: leaf %s consumes %s twice", file, p, q)
+				return fmt.Errorf("leaf %s consumes %s twice", p, q)
 			}
 			seen[q] = true
 		}
@@ -77,10 +86,7 @@ func ParseLeaves(file string, data []byte) (*Leaves, error) {
 		c.Consumes = kept
 		u.Children[p] = c
 	}
-	if err := u.checkRing(file); err != nil {
-		return nil, err
-	}
-	return &l, nil
+	return u.checkRing()
 }
 
 // Paths returns the leaf paths, sorted.

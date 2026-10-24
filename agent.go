@@ -15,6 +15,17 @@ type Agent interface {
 	Run(ctx context.Context, t Task) (Result, error)
 }
 
+// Submitter is the optional interface of an adapter that hands a session's typed output back through the
+// ygg-submit tool, so Result.Submitted holds it. An adapter that does not implement it submits nothing.
+type Submitter interface {
+	Submits() bool
+}
+
+// Blocked says a session could not do its work, and why. Every agent output may hold one.
+type Blocked struct {
+	Reason string `json:"reason"`
+}
+
 // Task is one agent session's input. Every session starts clean (spec §4.4).
 type Task struct {
 	Role          string        // the factory.yaml role, such as "planner"
@@ -29,6 +40,7 @@ type Task struct {
 	Timeout       time.Duration // 0: no limit beyond the context
 	EnvAllowlist  []string      // the host variables the session may see
 	TranscriptDir string        // where the adapter writes the session's transcript
+	Output        string        // the contract id the session returns, such as "ygg.plan/v1"; empty for none
 	Sandbox       Runner        // runs the session's commands in the leaf's sandbox; nil when the adapter works on the host
 }
 
@@ -99,6 +111,9 @@ type Result struct {
 	CLIVersion     string      // the agent tool's version; may be empty
 	Failure        FailureKind // a failed result: how it failed; empty means FailureAgent
 	Output         string      // the session's final answer, whole, up to MaxOutput bytes; a reviewer's findings come in it
+	// Submitted is the output document of the last accepted submit; nil for none. When that call named a draft
+	// file, the adapter reads the file from the workspace and this holds its document.
+	Submitted []byte
 }
 
 // SessionError is a session that ended without a usable Result. Usage is what could be read of the

@@ -1,0 +1,22 @@
+{
+  "title": "Photo Share",
+  "slug": "photo-share",
+  "goal": "A family keeps photos and shares albums.",
+  "decisions": [
+    {
+      "date": "2026-10-24",
+      "decision": "Accounts use email.",
+      "reason": "The brief names email.",
+      "cites": [
+        "email-sign-in"
+      ]
+    }
+  ],
+  "risks": [
+    "The photo store may be slow."
+  ],
+  "tasks": [],
+  "notes": [
+    "One layer only."
+  ]
+}

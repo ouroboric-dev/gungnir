@@ -1,0 +1,6 @@
+{
+  "deviation": true,
+  "blocked": {
+    "reason": "The spec adds offline mode, and the design is too short to say what the amendment should be."
+  }
+}

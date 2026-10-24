@@ -1,0 +1,12 @@
+{
+  "findings": [
+    {
+      "id": "spec-1",
+      "source": "spec",
+      "severity": "blocker",
+      "location": "api/auth.go:42",
+      "claim": "The signup route has no throttle.",
+      "status": "fixed"
+    }
+  ]
+}

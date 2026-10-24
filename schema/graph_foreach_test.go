@@ -11,9 +11,9 @@ import (
 const galleryGraph = `
 name: gallery
 version: 1.0.0
-schema: 1
+schema: 2
 nodes:
-  - { id: plan, kind: agent, role: planner, prompt: prompts/plan.md, repo: repos/app }
+  - { id: plan, kind: agent, role: planner, prompt: prompts/plan.md, repo: repos/app, input: [rejection], output: ygg.plan/v1 }
   - { id: plan-gate, kind: gate, gate: plan }
   - id: tasks
     kind: foreach
@@ -23,8 +23,10 @@ nodes:
         kind: loop
         realm: leaf
         role: implementer
+        input: [rejection]
+        output: ygg.implement/v1
         reviewers:
-          - { id: spec, role: reviewer, prompt: prompts/review-spec.md }
+          - { id: spec, role: reviewer, prompt: prompts/review-spec.md, output: ygg.review/v1 }
       - { id: feature-gate, kind: gate, gate: feature }
       - { id: land, kind: merge, realm: leaf }
       - { id: merge-gate, kind: gate, gate: merge }
@@ -60,7 +62,7 @@ func TestAGraphRepeatsATaskShapeForEveryReadyTask(t *testing.T) {
 }
 
 func TestParseGraphRefusesABadTaskShape(t *testing.T) {
-	head := "name: g\nversion: 1.0.0\nschema: 1\nnodes:\n"
+	head := "name: g\nversion: 1.0.0\nschema: 2\nnodes:\n"
 	fe := func(body string) string {
 		return "  - id: tasks\n    kind: foreach\n    over: tasks\n    nodes:\n" + body
 	}

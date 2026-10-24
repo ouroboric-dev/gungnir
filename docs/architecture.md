@@ -31,8 +31,9 @@ The contract: Go interface types and JSON schemas for ledger events, `graph.yaml
   `services` of the same name (`Pack.Provider(need)`). A pack with a `leaf` and `provides` or `product` is refused: a
   runtime realm provides no leaf (and, with a `sandbox`, no stack). A runtime realm's `product.start` is a regular file of the
   pack that Odin's init copies to the project root as `start.sh`.
-- Gives a graph a schema version: `graph.yaml` states `schema: 1` (required, an integer of 1 or more;
-  `schema.GraphSchema`), and a Gungnir refuses a graph that needs a higher one. `factory.yaml` names the
+- Gives a graph a schema version: `graph.yaml` states `schema: 2` (required, an integer; 2 is what
+  `schema.GraphSchema` reads now), and a Gungnir refuses a graph that needs a higher one. It refuses schema 1 too, which
+  declares no node's input and output (change typed-boundaries). `factory.yaml` names the
   store of graph packs with `graphs:` (`dir`, a clean absolute path, as `realms:` is). A graph pack is a
   `pack.yaml` with a `graph`; `HoldsRecipe` (of `Pack`) says whether it also holds a recipe (`checks`, `leaf`,
   `leaves`, `sandbox` or `services`), and only such a pack serves the leaves that pin no realm.
@@ -72,6 +73,32 @@ The contract: Go interface types and JSON schemas for ledger events, `graph.yaml
   hard approval point `pointer-contract` is in the schema of the gates.
 - Validates configs against those schemas.
 - Takes every interface change first: one PR here, plus one in each affected component (spec §1).
+
+## Contracts
+
+- A contract (`schema.Contract`) is a versioned data boundary of the factory (change typed-boundaries): an id such as
+  `ygg.plan/v1`, a JSON Schema in `schema/` and a Go type. `Contracts()` lists them, `SchemaFile` names the embedded
+  schema and `SchemaFS` hands the schemas to the work image.
+- A schema uses only the shared keywords, sets `additionalProperties: false` on every object that has `properties`
+  and a schema on every map, and leaves prose fields free text, bounded for safety only. Every agent output may carry
+  `blocked` (`gungnir.Blocked`, a reason) and `notes`.
+- `Validate` returns a `*ValidationError`: JSON pointers with a sentence each, sorted, at most 50, so the list can go
+  back to the model. `Decode` reads one valid document and refuses unknown fields and a second document.
+  `DecodeAnswer` reads a session's whole answer: one document, bare or in exactly one code fence, and nothing else.
+- Every agent node, every loop (its implementer) and every reviewer of a graph declares `output`, one contract of
+  `Contracts()`, and may declare `input`: node ids (that node's output) or the built-in sources (`brief`,
+  `decisions`, `task`, `change`, `open_findings`, `check_results`, `rejection`, `refusal`, `record`, `date`;
+  `BuiltinSources()`). `inputs:` folders are gone. `ParseGraph` calls `Graph.CheckTypes`, which refuses a graph whose
+  joins do not type-check and names the node and the field: an input with no source before it, a `reviews:` node
+  or a `publish` source with no output, a `tasks` node whose `from` is not the plan (`ygg.plan/v1`), a gate's
+  `deviation_from` that is not a conformance (`ygg.conformance/v1`), a node id equal to a built-in source, a loop whose output is not `ygg.implement/v1` or a reviewer's not
+  `ygg.review/v1`, `task`, `change`, `open_findings` or `check_results` outside a foreach body or `record`
+  before the grade, and a node a gate re-runs without `rejection` in its input or a `back_to` target without
+  `refusal` (`rejection` is a person's gate rejection; `refusal` the factory's: readiness, merge, pointer or the
+  owner-decision check). After
+  the `grade` node only a read-only or scratch agent that outputs `ygg.retro/v1` may follow.
+- `Task.Output` names the contract a session returns, and `Result.Submitted` holds the output document of the last
+  accepted `submit`; when that call named a draft file, the adapter reads the file from the workspace. An adapter that hands outputs back through `ygg-submit` implements `Submitter`.
 
 ## Depends on
 
