@@ -8,15 +8,15 @@ import (
 const returnsGraph = `
 name: returns
 version: 1.0.0
-schema: 1
+schema: 2
 nodes:
-  - { id: plan, kind: agent, role: planner, prompt: p.md, scratch: true }
-  - { id: ready, kind: tasks, from: docs/tasks.md, back_to: plan, returns: 3 }
+  - { id: plan, kind: agent, role: planner, prompt: p.md, scratch: true, output: ygg.plan/v1 }
+  - { id: ready, kind: tasks, from: plan, back_to: plan, returns: 3 }
   - id: tasks
     kind: foreach
     over: tasks
     nodes:
-      - { id: implement, kind: loop, realm: leaf, role: implementer }
+      - { id: implement, kind: loop, realm: leaf, role: implementer, output: ygg.implement/v1 }
       - { id: land, kind: merge, realm: leaf, back_to: implement }
       - { id: move, kind: pointer, realm: leaf, back_to: implement, returns: 1 }
 `
@@ -39,7 +39,7 @@ func TestARefusalCanGoBackIntoAnEarlierNodeAFewTimes(t *testing.T) {
 }
 
 func TestParseGraphRefusesBadReturns(t *testing.T) {
-	head := "name: g\nversion: 1.0.0\nschema: 1\nnodes:\n"
+	head := "name: g\nversion: 1.0.0\nschema: 2\nnodes:\n"
 	agent := "  - { id: a, kind: agent, role: planner, prompt: p.md, repo: repos/app }\n"
 	const bySchema = "jsonschema validation failed"
 	cases := map[string]struct{ nodes, want string }{

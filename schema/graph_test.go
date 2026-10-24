@@ -14,11 +14,11 @@ import (
 const toyGraph = `
 name: toy
 version: 1.0.0
-schema: 1
+schema: 2
 nodes:
-  - { id: design, kind: agent, role: planner, prompt: prompts/design.md, timeout: 10m }
+  - { id: design, kind: agent, role: planner, prompt: prompts/design.md, timeout: 10m, output: ygg.design/v1 }
   - { id: design-gate, kind: gate, gate: design }
-  - { id: plan, kind: agent, role: planner, prompt: prompts/plan.md }
+  - { id: plan, kind: agent, role: planner, prompt: prompts/plan.md, output: ygg.plan/v1 }
   - { id: dor, kind: exec, run: [test, -s, plan.md] }
   - { id: plan-gate, kind: gate, gate: plan, reruns: plan }
 `
@@ -43,7 +43,7 @@ func TestParseGraphResolvesWhatARejectionReruns(t *testing.T) {
 }
 
 func TestParseGraphRefuses(t *testing.T) {
-	head := "name: toy\nversion: 1.0.0\nschema: 1\nnodes:\n"
+	head := "name: toy\nversion: 1.0.0\nschema: 2\nnodes:\n"
 	agent := "  - { id: a, kind: agent, role: planner, prompt: p.md }\n"
 	const bySchema = "jsonschema validation failed"
 	cases := map[string]struct{ nodes, want string }{
@@ -80,7 +80,7 @@ func TestParseGraphRefuses(t *testing.T) {
 
 func TestGraphSchemaKnowsEveryApprovalPoint(t *testing.T) {
 	for _, g := range gungnir.Gates() {
-		y := "name: toy\nversion: 1.0.0\nschema: 1\nnodes:\n  - { id: a, kind: agent, role: planner, prompt: p.md }\n  - { id: g, kind: gate, gate: " + string(g) + " }\n"
+		y := "name: toy\nversion: 1.0.0\nschema: 2\nnodes:\n  - { id: a, kind: agent, role: planner, prompt: p.md, output: ygg.plan/v1 }\n  - { id: g, kind: gate, gate: " + string(g) + " }\n"
 		if _, err := ParseGraph("graph.yaml", []byte(y)); err != nil {
 			t.Errorf("gate %s: %v", g, err)
 		}
@@ -90,9 +90,9 @@ func TestGraphSchemaKnowsEveryApprovalPoint(t *testing.T) {
 const treeGraph = `
 name: toy
 version: 2.0.0
-schema: 1
+schema: 2
 nodes:
-  - { id: build, kind: agent, role: implementer, prompt: p.md, repo: repos/app }
+  - { id: build, kind: agent, role: implementer, prompt: p.md, repo: repos/app, output: ygg.implement/v1 }
   - { id: test, kind: exec, run: [go, test, ./...], repo: repos/app }
   - { id: index, kind: exec, run: [make-index], repo: . }
   - { id: merge-gate, kind: gate, gate: merge }
@@ -178,9 +178,9 @@ func TestAgentNodesNameTheirSkills(t *testing.T) {
 	g, err := ParseGraph("graph.yaml", []byte(`
 name: s
 version: 1.0.0
-schema: 1
+schema: 2
 nodes:
-  - { id: spec, kind: agent, role: planner, prompt: p.md, skills: [google-dev-docs, asd-ste100] }
+  - { id: spec, kind: agent, role: planner, prompt: p.md, skills: [google-dev-docs, asd-ste100], output: ygg.spec/v1 }
 `))
 	if err != nil || len(g.Nodes[0].Skills) != 2 || g.Nodes[0].Skills[1] != "asd-ste100" {
 		t.Fatalf("ParseGraph() = %+v, %v", g, err)
@@ -190,7 +190,7 @@ nodes:
 		"a skill with a dot": "{ id: a, kind: agent, role: r, prompt: p.md, skills: [../x] }",
 		"skills on an exec":  "{ id: a, kind: exec, run: [true], skills: [x] }",
 	} {
-		if _, err := ParseGraph("graph.yaml", []byte("name: s\nversion: 1.0.0\nschema: 1\nnodes:\n  - "+node+"\n")); err == nil {
+		if _, err := ParseGraph("graph.yaml", []byte("name: s\nversion: 1.0.0\nschema: 2\nnodes:\n  - "+node+"\n")); err == nil {
 			t.Errorf("%s: ParseGraph() = nil, want an error", name)
 		}
 	}
@@ -199,20 +199,21 @@ nodes:
 const loopGraph = `
 name: loopy
 version: 1.0.0
-schema: 1
+schema: 2
 nodes:
   - id: build
     kind: loop
     repo: repos/app
     role: implementer
     prompt: prompts/build.md
+    output: ygg.implement/v1
     skills: [ponytail-review]
     max_turns: 60
     timeout: 20m
     checks: [vet, test]
     reviewers:
-      - { id: spec, role: reviewer, prompt: prompts/review-spec.md, max_turns: 20, timeout: 10m }
-      - { id: quality, role: reviewer, prompt: prompts/review-quality.md, skills: [ponytail-review] }
+      - { id: spec, role: reviewer, prompt: prompts/review-spec.md, max_turns: 20, timeout: 10m, output: ygg.review/v1 }
+      - { id: quality, role: reviewer, prompt: prompts/review-quality.md, skills: [ponytail-review], output: ygg.review/v1 }
   - { id: feature-gate, kind: gate, gate: feature }
 `
 
@@ -237,7 +238,7 @@ func TestParseGraphLoopNodes(t *testing.T) {
 }
 
 func TestParseGraphRefusesLoops(t *testing.T) {
-	head := "name: l\nversion: 1.0.0\nschema: 1\nnodes:\n"
+	head := "name: l\nversion: 1.0.0\nschema: 2\nnodes:\n"
 	loop := "  - { id: build, kind: loop, repo: repos/app, role: implementer, prompt: p.md, checks: [vet] }\n"
 	rev := func(id string) string {
 		return "{ id: " + id + ", role: reviewer, prompt: r.md }"

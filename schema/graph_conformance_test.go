@@ -11,10 +11,10 @@ import (
 const conformanceGraph = `
 name: conformance
 version: 1.0.0
-schema: 1
+schema: 2
 nodes:
-  - { id: spec, kind: agent, role: planner, prompt: prompts/spec.md, scratch: true, inputs: [docs/1-product] }
-  - { id: conformance, kind: agent, role: reviewer, prompt: prompts/conformance.md, scratch: true, reviews: spec, inputs: [docs/1-product] }
+  - { id: spec, kind: agent, role: planner, prompt: prompts/spec.md, scratch: true, input: [brief], output: ygg.spec/v1 }
+  - { id: conformance, kind: agent, role: reviewer, prompt: prompts/conformance.md, scratch: true, reviews: spec, input: [spec], output: ygg.conformance/v1 }
   - { id: spec-gate, kind: gate, gate: spec, reruns: spec, deviation_from: conformance }
   - { id: spec-docs, kind: publish, from: spec, to: docs }
 `
@@ -33,14 +33,14 @@ func TestAScratchReviewerReadsTheOutputOfTheAgentItReviewsAndTheSpecGateReadsIts
 }
 
 func TestAReviewerAndTheDeviationItReportsAreRefusedWhenTheyPointAtNothingReal(t *testing.T) {
-	noScratch := strings.Replace(conformanceGraph, "id: spec, kind: agent, role: planner, prompt: prompts/spec.md, scratch: true, inputs: [docs/1-product]", "id: spec, kind: agent, role: planner, prompt: prompts/spec.md, repo: repos/web", 1)
+	noScratch := strings.Replace(conformanceGraph, "id: spec, kind: agent, role: planner, prompt: prompts/spec.md, scratch: true, input: [brief], output: ygg.spec/v1", "id: spec, kind: agent, role: planner, prompt: prompts/spec.md, repo: repos/web, output: ygg.spec/v1", 1)
 	noScratch = strings.Replace(noScratch, "  - { id: spec-gate, kind: gate, gate: spec, reruns: spec, deviation_from: conformance }\n  - { id: spec-docs, kind: publish, from: spec, to: docs }\n", "", 1)
 	bad := map[string]struct{ graph, want string }{
 		"reviews a node that is not there":      {strings.Replace(conformanceGraph, "reviews: spec", "reviews: nope", 1), "reviews"},
 		"reviews itself":                        {strings.Replace(conformanceGraph, "reviews: spec", "reviews: conformance", 1), "reviews"},
 		"reviews a node after it":               {strings.Replace(conformanceGraph, "reviews: spec", "reviews: spec-docs", 1), "reviews"},
 		"reviews an agent that is no scratch":   {noScratch, "reviews"},
-		"a reviewer that is no scratch agent":   {strings.Replace(conformanceGraph, "scratch: true, reviews: spec, inputs: [docs/1-product]", "reviews: spec", 1), "only a scratch agent reviews"},
+		"a reviewer that is no scratch agent":   {strings.Replace(conformanceGraph, "scratch: true, reviews: spec, input: [spec]", "reviews: spec", 1), "only a scratch agent reviews"},
 		"a deviation read from no node":         {strings.Replace(conformanceGraph, "deviation_from: conformance", "deviation_from: nope", 1), "deviation_from"},
 		"a deviation read from a plain scratch": {strings.Replace(conformanceGraph, "deviation_from: conformance", "deviation_from: spec", 1), "deviation_from"},
 		"a deviation read by a gate not spec":   {strings.Replace(conformanceGraph, "gate: spec,", "gate: plan,", 1), "deviation_from"},

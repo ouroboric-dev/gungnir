@@ -15,7 +15,7 @@ import (
 
 // GraphSchema is the graph schema version this Gungnir reads: the highest number a graph.yaml may state
 // in its schema field.
-const GraphSchema = 1
+const GraphSchema = 2
 
 // Graph is a graph pack's graph.yaml. Nodes run in order.
 type Graph struct {
@@ -68,11 +68,13 @@ type Node struct {
 	MaxTurns  int          `yaml:"max_turns"`  // agent, loop (the implementer)
 	MaxTokens int          `yaml:"max_tokens"` // agent, loop (each session): input plus output tokens, not cache reads; 0 is no limit
 	Skills    []string     `yaml:"skills"`     // agent, loop: the skills loaded into its prompt, by name (spec §5.1)
+	Input     []string     `yaml:"input"`      // agent, loop (the implementer): what its prompt is built from, each a node id (that node's output) or a built-in source (change typed-boundaries)
+	Output    string       `yaml:"output"`     // agent, loop (the implementer): the one contract its session returns, a Contracts() id
 	Timeout   Duration     `yaml:"timeout"`    // exec, agent, loop (each session), merge and pointer
 	Gate      gungnir.Gate `yaml:"gate"`       // gate: the approval point
 	Reruns    string       `yaml:"reruns"`     // gate: the agent node a rejection re-runs; set by ParseGraph
 
-	DeviationFrom string `yaml:"deviation_from"` // gate (spec): the scratch reviewer whose conformance.json says whether the spec deviates from the design; a deviation stops the gate (spec §7.1)
+	DeviationFrom string `yaml:"deviation_from"` // gate (spec): the scratch reviewer whose output (ygg.conformance/v1) says whether the spec deviates from the design; a deviation stops the gate (spec §7.1)
 
 	Repo       string     `yaml:"repo"`       // exec, agent, loop, merge, pointer: a repo of the project, relative to it; "." is the project umbrella
 	Checks     []string   `yaml:"checks"`     // loop, merge, pointer: pack checks run in the leaf (a loop's, in order, after each attempt)
@@ -81,12 +83,11 @@ type Node struct {
 	Acceptance []string   `yaml:"acceptance"` // pointer: pack checks run in the leaf's parent umbrella
 	Generated  []string   `yaml:"generated"`  // pointer: generated files of the parent umbrella, committed with the move under the shrink guard
 
-	Scratch bool     `yaml:"scratch"` // agent: runs in a scratch workspace, not a leaf, and writes its documents to out/ (spec §3.3 rule 1)
-	Reviews string   `yaml:"reviews"` // agent (scratch): an earlier scratch agent whose out/ this one reads, as reviewed/ in its own workspace (spec §4.2, the design-conformance review)
-	Inputs  []string `yaml:"inputs"`  // agent (scratch): files and folders of the project, copied into the workspace; changes to the copies are ignored
-	From    string   `yaml:"from"`    // publish: the scratch agent whose output is published; tasks: the tasks.md, by glob; init: the leaves file
-	To      string   `yaml:"to"`      // publish: the folder of the project its files go to
-	Leaves  string   `yaml:"leaves"`  // tasks: the leaves file of the spec stage; its leaves are the layers a task may name, beside the leaves the project has
+	Scratch bool   `yaml:"scratch"` // agent: runs in a scratch workspace, not a leaf, and writes its documents to out/ (spec §3.3 rule 1)
+	Reviews string `yaml:"reviews"` // agent (scratch): an earlier scratch agent whose out/ this one reads, as reviewed/ in its own workspace (spec §4.2, the design-conformance review)
+	From    string `yaml:"from"`    // publish: the scratch agent whose output is published; tasks: the node whose output is the plan (ygg.plan/v1); init: the leaves file
+	To      string `yaml:"to"`      // publish: the folder of the project its files go to
+	Leaves  string `yaml:"leaves"`  // tasks: the leaves file of the spec stage; its leaves are the layers a task may name, beside the leaves the project has
 
 	BackTo  string `yaml:"back_to"` // merge, pointer, tasks: the earlier agent or loop node a refusal goes back into, with the refusal as its input
 	Returns int    `yaml:"returns"` // merge, pointer, tasks: how many times it may go back; DefaultReturns when back_to is set and this is not
@@ -109,6 +110,8 @@ type Reviewer struct {
 	MaxTurns  int      `yaml:"max_turns"`
 	MaxTokens int      `yaml:"max_tokens"`
 	Timeout   Duration `yaml:"timeout"`
+	Input     []string `yaml:"input"`  // what its prompt is built from, as a node's Input
+	Output    string   `yaml:"output"` // the one contract its session returns
 }
 
 // SessionKey names the sessions of reviewer r of loop n in the ledger, the transcripts and a script.
@@ -164,8 +167,9 @@ func LoadGraph(path string) (*Graph, error) {
 // it never re-runs an exec node, which would drop it. A loop's attempts default to DefaultAttempts, its
 // reviewers' ids are unique, and a reviewer's session key (the loop's id, a dash and the reviewer's id)
 // never equals a node's id. A grade node is the last node of the graph, because it runs after every
-// sandbox has stopped. A foreach node's body is checked as a graph of its own, in which a node
-// names no repo: the task's leaf is its repo.
+// sandbox has stopped, except for read-only or scratch agents that return the retro (ygg.retro/v1). A foreach node's body is checked as a graph of its own, in which a node
+// names no repo: the task's leaf is its repo. Last, CheckTypes checks that every node's inputs and
+// outputs type-check.
 func ParseGraph(file string, data []byte) (*Graph, error) {
 	var g Graph
 	if err := refuseNewerSchema(file, data); err != nil {
@@ -179,8 +183,13 @@ func ParseGraph(file string, data []byte) (*Graph, error) {
 		return nil, err
 	}
 	for i, n := range g.Nodes {
-		if n.Kind == KindGrade && i != len(g.Nodes)-1 {
-			return nil, fmt.Errorf("%s: node %s: a grade node must be the last node of the graph and there is one at most: grading starts only after every sandbox has stopped", file, n.ID)
+		if n.Kind != KindGrade {
+			continue
+		}
+		for _, m := range g.Nodes[i+1:] {
+			if !mayFollowGrade(m) {
+				return nil, fmt.Errorf("%s: node %s: a grade node must be the last node of the graph and there is one at most: grading starts only after every sandbox has stopped; only a read-only or scratch agent that outputs %s may follow it, and %s is not one", file, n.ID, ContractRetro, m.ID)
+			}
 		}
 	}
 	for key, loop := range c.keys {
@@ -188,12 +197,21 @@ func ParseGraph(file string, data []byte) (*Graph, error) {
 			return nil, fmt.Errorf("%s: loop %s: a reviewer's session key %q is also a node id", file, loop, key)
 		}
 	}
+	if err := g.CheckTypes(); err != nil {
+		return nil, fmt.Errorf("%s: %w", file, err)
+	}
 	return &g, nil
+}
+
+// mayFollowGrade reports whether n may come after the grade node: the retrospective, an agent that sees the
+// run record and returns the retro, and only reads or works in a scratch workspace.
+func mayFollowGrade(n Node) bool {
+	return n.Kind == KindAgent && (n.ReadOnly || n.Scratch) && n.Output == string(ContractRetro)
 }
 
 // refuseNewerSchema refuses a graph that states a schema above GraphSchema, before the JSON schema runs: a
 // graph of a newer schema uses what this one does not know, and the reason is the version, not a dump of
-// every field it fails on.
+// every field it fails on. It refuses schema 1 too, which declares no node's input and output.
 func refuseNewerSchema(file string, data []byte) error {
 	doc, err := decodeYAML(file, data)
 	if err != nil {
@@ -201,7 +219,9 @@ func refuseNewerSchema(file string, data []byte) error {
 	}
 	top, _ := doc.(map[string]any)
 	if n, ok := top["schema"].(json.Number); ok {
-		if v, err := n.Int64(); err == nil && v > GraphSchema {
+		if v, err := n.Int64(); err == nil && v == 1 {
+			return fmt.Errorf("%s: this graph was written for schema 1; declare each node's input and output (change typed-boundaries)", file)
+		} else if err == nil && v > GraphSchema {
 			return fmt.Errorf("%s: the graph needs graph schema %d, and this Gungnir reads schema %d at most", file, v, GraphSchema)
 		}
 	}
@@ -292,25 +312,10 @@ func (c *graphCheck) stage(n *Node, before []Node) error {
 			return fmt.Errorf("%s: node %s: a scratch agent names no repo; it works in a workspace of its own", file, n.ID)
 		case n.Scratch && n.ReadOnly:
 			return fmt.Errorf("%s: node %s: a scratch agent writes its output to out/, so it can't be read-only", file, n.ID)
-		case !n.Scratch && len(n.Inputs) > 0:
-			return fmt.Errorf("%s: node %s: only a scratch agent takes inputs", file, n.ID)
 		case !n.Scratch && n.Reviews != "":
 			return fmt.Errorf("%s: node %s: only a scratch agent reviews another scratch agent's output", file, n.ID)
 		case n.Reviews != "" && !slices.ContainsFunc(before, func(m Node) bool { return m.ID == n.Reviews && m.Kind == KindAgent && m.Scratch }):
 			return fmt.Errorf("%s: node %s reviews %q, which must be a scratch agent node before it", file, n.ID, n.Reviews)
-		}
-		seen := map[string]bool{}
-		for _, in := range n.Inputs {
-			if filepath.Clean(in) == "." {
-				return fmt.Errorf("%s: node %s: input %q must be a path inside the project, not the project itself", file, n.ID, in)
-			}
-			if !projectPath(in) {
-				return fmt.Errorf("%s: node %s: input %q must be a path inside the project, outside .git and .factory", file, n.ID, in)
-			}
-			if seen[in] {
-				return fmt.Errorf("%s: node %s: input %q is listed twice", file, n.ID, in)
-			}
-			seen[in] = true
 		}
 	case KindPublish:
 		if !slices.ContainsFunc(before, func(m Node) bool { return m.ID == n.From && m.Kind == KindAgent && m.Scratch }) {
@@ -332,7 +337,7 @@ func (c *graphCheck) stage(n *Node, before []Node) error {
 			return fmt.Errorf("%s: node %s: deviation_from %q must be a scratch reviewer (an agent with reviews) before it", file, n.ID, n.DeviationFrom)
 		}
 	case KindTasks, KindInit:
-		if !projectPath(n.From) {
+		if n.Kind == KindInit && !projectPath(n.From) {
 			return fmt.Errorf("%s: node %s: from %q must be a path inside the project, outside .git and .factory", file, n.ID, n.From)
 		}
 		if n.Leaves != "" && !projectPath(n.Leaves) {

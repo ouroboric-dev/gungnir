@@ -31,8 +31,9 @@ The contract: Go interface types and JSON schemas for ledger events, `graph.yaml
   `services` of the same name (`Pack.Provider(need)`). A pack with a `leaf` and `provides` or `product` is refused: a
   runtime realm provides no leaf (and, with a `sandbox`, no stack). A runtime realm's `product.start` is a regular file of the
   pack that Odin's init copies to the project root as `start.sh`.
-- Gives a graph a schema version: `graph.yaml` states `schema: 1` (required, an integer of 1 or more;
-  `schema.GraphSchema`), and a Gungnir refuses a graph that needs a higher one. `factory.yaml` names the
+- Gives a graph a schema version: `graph.yaml` states `schema: 2` (required, an integer of 1 or more;
+  `schema.GraphSchema`), and a Gungnir refuses a graph that needs a higher one. It refuses schema 1 too, which
+  declares no node's input and output (change typed-boundaries). `factory.yaml` names the
   store of graph packs with `graphs:` (`dir`, a clean absolute path, as `realms:` is). A graph pack is a
   `pack.yaml` with a `graph`; `HoldsRecipe` (of `Pack`) says whether it also holds a recipe (`checks`, `leaf`,
   `leaves`, `sandbox` or `services`), and only such a pack serves the leaves that pin no realm.
@@ -84,6 +85,14 @@ The contract: Go interface types and JSON schemas for ledger events, `graph.yaml
 - `Validate` returns a `*ValidationError`: JSON pointers with a sentence each, sorted, at most 50, so the list can go
   back to the model. `Decode` reads one valid document and refuses unknown fields and a second document.
   `DecodeAnswer` reads a session's whole answer: one document, bare or in exactly one code fence, and nothing else.
+- Every agent node, every loop (its implementer) and every reviewer of a graph declares `output`, one contract of
+  `Contracts()`, and may declare `input`: node ids (that node's output) or the built-in sources (`brief`,
+  `decisions`, `task`, `change`, `open_findings`, `check_results`, `rejection`, `refusal`, `record`, `date`;
+  `BuiltinSources()`). `inputs:` folders are gone. `ParseGraph` calls `Graph.CheckTypes`, which refuses a graph whose
+  joins do not type-check and names the node and the field: an input with no source before it, a `reviews:` node
+  or a `publish` source with no output, a `tasks` node whose `from` is not the plan (`ygg.plan/v1`), a gate's
+  `deviation_from` that is not a conformance (`ygg.conformance/v1`), a node id equal to a built-in source. After
+  the `grade` node only a read-only or scratch agent that outputs `ygg.retro/v1` may follow.
 - `Task.Output` names the contract a session returns, and `Result.Submitted` holds the last `submit` input the adapter
   read. An adapter that hands outputs back through `ygg-submit` implements `Submitter`.
 

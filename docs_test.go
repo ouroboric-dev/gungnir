@@ -37,7 +37,7 @@ func TestTheArchitecturePageNamesTheGraphPins(t *testing.T) {
 		t.Fatal(err)
 	}
 	page := string(b)
-	for _, want := range []string{"`schema: 1`", "`graph_version`", "`graphs:`", "`HoldsRecipe`"} {
+	for _, want := range []string{"`schema: 2`", "`graph_version`", "`graphs:`", "`HoldsRecipe`"} {
 		if !strings.Contains(page, want) {
 			t.Errorf("docs/architecture.md does not mention %q", want)
 		}
