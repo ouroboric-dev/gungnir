@@ -197,6 +197,12 @@ func (t *typeCheck) inputs(who string, input []string, n Node, visible map[strin
 			continue
 		}
 		if pos, ok := t.order[in]; ok {
+			switch {
+			case in == n.ID && who == "node "+n.ID:
+				return fmt.Errorf("%s: input %s names itself", who, in)
+			case in == n.ID:
+				return fmt.Errorf("%s: input %s names its own loop, whose output comes after the review", who, in)
+			}
 			if pos >= t.order[n.ID] {
 				return fmt.Errorf("%s: input %s is a node that comes after it", who, in)
 			}

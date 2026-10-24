@@ -68,6 +68,9 @@ func (f Feature) Slug() string {
 // parses (the readiness check refuses it, with the reasons); an id used twice, a field given twice, a
 // criterion outside a field, an unclosed fence, a file with no task and a file over MaxTasksFile are
 // errors.
+//
+// Deprecated: reads the tasks.md of a run from before change typed-boundaries; nothing new calls it (T18 removes
+// it).
 func ParseTasks(file string, data []byte) ([]Feature, error) {
 	if len(data) > MaxTasksFile {
 		return nil, fmt.Errorf("%s: %d bytes is more than the %d a tasks file may hold", file, len(data), MaxTasksFile)

@@ -28,8 +28,8 @@ type FeatureRecord struct {
 	Why    string     `json:"why,omitempty"` // a blocked task: what stopped it
 }
 
-// Features is features.json: the plan's tasks and where each stands, derived from tasks.md by Odin, who is
-// its only writer (spec §3.3 rule 2). An agent is told its task in its prompt; it never reads this file.
+// Features is features.json: the plan's tasks and where each stands, derived from the plan's output by Odin, who
+// is its only writer (spec §3.3 rule 2). An agent is told its task in its prompt; it never reads this file.
 type Features struct {
 	Schema       string          `json:"schema"`
 	Run          string          `json:"run"`           // the run that last wrote it

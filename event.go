@@ -62,7 +62,7 @@ const (
 
 	// The typed boundaries (change typed-boundaries). Node and Attempt say where; Note holds the contract and the first error.
 	EventOutputRefused  EventName = "output_refused"  // a session's output broke its contract and went back for repair
-	EventOutputRepaired EventName = "output_repaired" // a refused output was repaired in the same session
+	EventOutputRepaired EventName = "output_repaired" // a refused output was repaired in a repair session (T15)
 	EventJudged         EventName = "judged"          // the operator scored a run or a task (ygg score); Task is set for a task
 	EventRetroWritten   EventName = "retro_written"   // the retrospective agent's output was read and stored in the record
 )
