@@ -13,7 +13,7 @@
       "maxLength": 200
     },
     "slug": {
-      "description": "Two to four words of the name, lower case, joined by dashes.",
+      "description": "One to four words of the name, lower case, joined by dashes.",
       "type": "string",
       "pattern": "^[a-z0-9]+(-[a-z0-9]+){0,3}$"
     },

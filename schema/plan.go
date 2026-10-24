@@ -30,7 +30,7 @@ type PlanTask struct {
 	Contract  string   `json:"contract,omitempty"`
 }
 
-// FeaturesFromPlan turns the plan's tasks into features, in the plan's order. The line is 0: no tasks.md holds them.
+// FeaturesFromPlan turns the plan's tasks into features, in the plan's order. The line is 0: no file holds them.
 func FeaturesFromPlan(p Plan) []Feature {
 	out := make([]Feature, 0, len(p.Tasks))
 	for _, t := range p.Tasks {

@@ -61,6 +61,15 @@ func TestTheSoftwareGraphShapeLoads(t *testing.T) {
 	if loop.Output != string(ContractImplement) || len(loop.Reviewers) != 3 || loop.Reviewers[2].Output != string(ContractReview) {
 		t.Errorf("the loop = %+v, want the implement contract and three reviewers returning the review", loop)
 	}
+	// Every publish source declares rejection: a secret-scan stop or a blocked output re-runs it with the person's note.
+	for _, n := range g.All() {
+		if n.Kind != KindPublish {
+			continue
+		}
+		if src := g.Nodes[g.Index(n.From)]; !slices.Contains(src.Input, SourceRejection) {
+			t.Errorf("publish %s: its source %s has input %v, want %s declared", n.ID, src.ID, src.Input, SourceRejection)
+		}
+	}
 	// Each declaration is needed: dropping one no longer loads.
 	for name, c := range map[string][3]string{
 		"the plan's output":         {"    output: ygg.plan/v1\n", "", "node plan has no output"},

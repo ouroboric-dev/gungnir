@@ -37,7 +37,7 @@ const (
 	KindLoop    NodeKind = "loop"    // implement, check and fix with a bounded number of attempts (spec §4.2, §4.6, §7.3)
 	KindForeach NodeKind = "foreach" // repeats its body for every ready task of the plan, in the leaf the task names (spec §4.2)
 	KindPublish NodeKind = "publish" // Odin copies a scratch agent's output into the project and commits it (spec §3.3 rule 1)
-	KindTasks   NodeKind = "tasks"   // Odin reads the plan's tasks.md, checks every task is ready, and writes features.json (spec §4.2)
+	KindTasks   NodeKind = "tasks"   // Odin reads the plan's typed output, checks every task is ready, and writes features.json (spec §4.2)
 	KindInit    NodeKind = "init"    // Odin creates the leaves the spec names, each from its realm's template (spec §4.2, §4.1)
 	KindGrade   NodeKind = "grade"   // Odin stops every sandbox, exports the project's /app and grades it against the hidden suite; the last node of a graph (spec §11)
 )

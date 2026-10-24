@@ -70,7 +70,7 @@ nodes:
     prompt: prompts/reuse-review.md
     scratch: true
     reviews: plan
-    input: [plan, spec]
+    input: [plan, spec, rejection]
     output: ygg.reuse-review/v1
     skills: [ponytail-review]
     max_turns: 15

@@ -33,8 +33,8 @@ type FeatureRecord struct {
 type Features struct {
 	Schema       string          `json:"schema"`
 	Run          string          `json:"run"`           // the run that last wrote it
-	Source       string          `json:"source"`        // the tasks.md it came from, relative to the project
-	SourceSHA256 string          `json:"source_sha256"` // that file as Odin read it
+	Source       string          `json:"source"`        // the plan output it came from (FeaturesFromPlan), relative to the project
+	SourceSHA256 string          `json:"source_sha256"` // that source as Odin read it
 	Tasks        []FeatureRecord `json:"tasks"`         // in the order they are built
 }
 
