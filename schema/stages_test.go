@@ -74,14 +74,20 @@ func TestTheStageContractsReadTheirFixtures(t *testing.T) {
 					t.Fatal("an invalid fixture is read")
 				}
 				// The file name holds the JSON pointer of the failure, its slashes as dashes. A name that starts
-				// with "check-" fails in the type's Check method, which has no pointer, so the error names the
-				// value instead (the duplicate question id).
-				want := "/" + strings.ReplaceAll(where, "-", "/")
+				// with "check-" fails in the type's Check method, which has no pointer, so the error must say
+				// "used twice" and name the value (the duplicate question id). A name that starts with "root-"
+				// misses a required property of the document itself: the error is at "(document)" and names
+				// the property.
+				wants := []string{"/" + strings.ReplaceAll(where, "-", "/")}
 				if id, isCheck := strings.CutPrefix(where, "check-"); isCheck {
-					want = id
+					wants = []string{"used twice", id}
+				} else if prop, isRoot := strings.CutPrefix(where, "root-"); isRoot {
+					wants = []string{"(document)", prop}
 				}
-				if !strings.Contains(err.Error(), want) {
-					t.Errorf("the error does not name %q: %v", want, err)
+				for _, want := range wants {
+					if !strings.Contains(err.Error(), want) {
+						t.Errorf("the error does not hold %q: %v", want, err)
+					}
 				}
 			default:
 				t.Fatalf("the fixture name must hold -ok- or -bad-")

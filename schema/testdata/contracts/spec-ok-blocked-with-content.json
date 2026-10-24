@@ -1,0 +1,11 @@
+{
+  "blocked": {
+    "reason": "The design is unclear."
+  },
+  "title": "Photo Share",
+  "slug": "photo-share",
+  "summary": "Partly read.",
+  "notes": [
+    "Stopped at the data model."
+  ]
+}

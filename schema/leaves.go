@@ -25,8 +25,8 @@ type RuntimePin struct {
 type LeafSpec struct {
 	Realm        string   `yaml:"realm" json:"realm"`
 	RealmVersion string   `yaml:"realm_version" json:"realm_version"`
-	Description  string   `yaml:"description" json:"description"`               // the new repo's description
-	Consumes     []string `yaml:"consumes,omitempty" json:"consumes,omitempty"` // sibling leaves this one calls
+	Description  string   `yaml:"description" json:"description"`              // the new repo's description
+	Consumes     []string `yaml:"consumes,omitempty" json:"consumes,omitzero"` // sibling leaves this one calls
 }
 
 // ParseLeaves parses leaves.yaml. A leaf's path stays inside the project and outside .git and .factory,
