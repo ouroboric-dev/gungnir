@@ -382,3 +382,35 @@ func unportable(p string) string {
 	}
 	return ""
 }
+
+func TestSchemasDefineOnlyWhatTheyUse(t *testing.T) {
+	entries, err := fs.ReadDir(SchemaFS(), ".")
+	if err != nil {
+		t.Fatal(err)
+	}
+	raws := map[string]string{}
+	for _, e := range entries {
+		raw, err := fs.ReadFile(SchemaFS(), e.Name())
+		if err != nil {
+			t.Fatal(err)
+		}
+		raws[e.Name()] = string(raw)
+	}
+	for name, raw := range raws {
+		var doc struct {
+			Defs map[string]json.RawMessage `json:"$defs"`
+		}
+		if err := json.Unmarshal([]byte(raw), &doc); err != nil {
+			t.Fatalf("%s: %v", name, err)
+		}
+		for def := range doc.Defs {
+			used := strings.Contains(raw, `"#/$defs/`+def+`"`)
+			for other, r := range raws {
+				used = used || other != name && strings.Contains(r, `"`+name+`#/$defs/`+def+`"`)
+			}
+			if !used {
+				t.Errorf("%s: $defs/%s is used by nothing", name, def)
+			}
+		}
+	}
+}

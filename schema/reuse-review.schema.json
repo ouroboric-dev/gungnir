@@ -65,17 +65,6 @@
         "maxLength": 4096
       }
     },
-    "cites": {
-      "description": "Owner decision ids this one comes from.",
-      "type": "array",
-      "maxItems": 50,
-      "items": {
-        "type": "string",
-        "minLength": 1,
-        "maxLength": 100,
-        "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
-      }
-    },
     "item": {
       "description": "One finding.",
       "type": "object",
