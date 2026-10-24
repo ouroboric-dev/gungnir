@@ -73,6 +73,20 @@ The contract: Go interface types and JSON schemas for ledger events, `graph.yaml
 - Validates configs against those schemas.
 - Takes every interface change first: one PR here, plus one in each affected component (spec §1).
 
+## Contracts
+
+- A contract (`schema.Contract`) is a versioned data boundary of the factory (change typed-boundaries): an id such as
+  `ygg.plan/v1`, a JSON Schema in `schema/` and a Go type. `Contracts()` lists them, `SchemaFile` names the embedded
+  schema and `SchemaFS` hands the schemas to the work image.
+- A schema uses only the shared keywords, sets `additionalProperties: false` on every object that has `properties`
+  and a schema on every map, and leaves prose fields free text, bounded for safety only. Every agent output may carry
+  `blocked` (`gungnir.Blocked`, a reason) and `notes`.
+- `Validate` returns a `*ValidationError`: JSON pointers with a sentence each, sorted, at most 50, so the list can go
+  back to the model. `Decode` reads one valid document and refuses unknown fields and a second document.
+  `DecodeAnswer` reads a session's whole answer: one document, bare or in exactly one code fence, and nothing else.
+- `Task.Output` names the contract a session returns, and `Result.Submitted` holds the last `submit` input the adapter
+  read. An adapter that hands outputs back through `ygg-submit` implements `Submitter`.
+
 ## Depends on
 
 - Nothing.

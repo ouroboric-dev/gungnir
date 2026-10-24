@@ -145,38 +145,22 @@ func unfence(answer string) (string, error) {
 	_, body, ok := strings.Cut(s, "\n")
 	body = strings.TrimSpace(body)
 	if !ok || !strings.HasSuffix(body, "```") {
-		return "", errors.New("report: a code fence is not closed")
+		return "", errors.New("a code fence is not closed")
 	}
 	body = strings.TrimSpace(strings.TrimSuffix(body, "```"))
 	if strings.Contains(body, "```") {
-		return "", errors.New("report: more than one code fence")
+		return "", errors.New("more than one code fence")
 	}
 	return body, nil
 }
 
 // ParseConformance parses the design-conformance reviewer's verdict: one JSON document, bare or in one
-// code fence. A verdict that can't be read, a deviation without an amendment and an amendment without a
-// deviation are errors, never a pass: the spec gate would let a deviation through (spec §4.6).
+// code fence, as the whole answer. A verdict that can't be read, a deviation without an amendment and an
+// amendment without a deviation are errors, never a pass: the spec gate would let a deviation through (spec §4.6).
 func ParseConformance(answer []byte) (gungnir.Conformance, error) {
-	var c gungnir.Conformance
-	data, err := unfence(string(answer))
+	c, err := DecodeAnswer[gungnir.Conformance](ContractConformance, answer)
 	if err != nil {
-		return c, err
-	}
-	doc, err := jsonschema.UnmarshalJSON(strings.NewReader(data))
-	if err != nil {
-		return c, fmt.Errorf("conformance: %w", err)
-	}
-	if err := validate("conformance", "conformance.schema.json", doc); err != nil {
-		return c, err
-	}
-	dec := json.NewDecoder(strings.NewReader(data))
-	dec.DisallowUnknownFields()
-	if err := dec.Decode(&c); err != nil {
 		return gungnir.Conformance{}, fmt.Errorf("conformance: %w", err)
-	}
-	if dec.More() {
-		return gungnir.Conformance{}, fmt.Errorf("conformance: more than one document")
 	}
 	return c, nil
 }
