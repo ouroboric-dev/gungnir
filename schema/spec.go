@@ -1,6 +1,10 @@
 package schema
 
-import "github.com/ouroboric-dev/gungnir"
+import (
+	"fmt"
+
+	"github.com/ouroboric-dev/gungnir"
+)
 
 // Spec is the spec stage's answer (ygg.spec/v1): the sections of the engineering spec as fields, and the
 // leaves. Odin renders the spec document and leaves.yaml. With Blocked set, the content fields may be empty.
@@ -28,4 +32,15 @@ type Deviation struct {
 	Where string   `json:"where"`
 	Why   string   `json:"why"`
 	Cites []string `json:"cites,omitzero"`
+}
+
+// Check runs the leaves file's own rules on the leaves, when the spec holds them, which the JSON Schema cannot say.
+func (s *Spec) Check() error {
+	if s.Leaves.Leaves == nil && s.Leaves.Runtime == nil {
+		return nil
+	}
+	if err := s.Leaves.Check(); err != nil {
+		return fmt.Errorf("leaves: %w", err)
+	}
+	return nil
 }
