@@ -42,6 +42,7 @@ func TestTheStageContractsReadTheirFixtures(t *testing.T) {
 		"design": {ContractDesign, roundTrip[Design]},
 		"spec":   {ContractSpec, roundTrip[Spec]},
 		"reuse":  {ContractReuseReview, roundTrip[ReuseReview]},
+		"plan":   {ContractPlan, roundTrip[Plan]},
 	}
 	names, err := filepath.Glob("testdata/contracts/*.json")
 	if err != nil || len(names) == 0 {
@@ -94,7 +95,7 @@ func TestTheStageContractsReadTheirFixtures(t *testing.T) {
 			}
 		})
 	}
-	for _, kind := range []string{"design", "spec", "reuse"} {
+	for _, kind := range []string{"design", "spec", "reuse", "plan"} {
 		if seen[kind+"-ok"] == 0 || seen[kind+"-bad"] == 0 {
 			t.Errorf("%s has %d valid and %d invalid fixtures; it needs both", kind, seen[kind+"-ok"], seen[kind+"-bad"])
 		}

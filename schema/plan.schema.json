@@ -1,0 +1,234 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/ouroboric-dev/gungnir/schema/plan.schema.json",
+  "title": "ygg.plan/v1",
+  "description": "The plan stage's answer: the plan and its tasks as fields. Odin renders plan.md and tasks.md and builds features.json from it. With blocked, the content fields are optional.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "title": {
+      "description": "The plan's name.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "slug": {
+      "description": "Two to four words of the name, lower case, joined by dashes.",
+      "type": "string",
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+){0,3}$"
+    },
+    "goal": {
+      "description": "What the plan delivers.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 65536
+    },
+    "decisions": {
+      "description": "The decisions the plan makes.",
+      "type": "array",
+      "maxItems": 200,
+      "items": {
+        "$ref": "#/$defs/decided"
+      }
+    },
+    "risks": {
+      "description": "What could go wrong.",
+      "type": "array",
+      "maxItems": 200,
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 4096
+      }
+    },
+    "tasks": {
+      "description": "The tasks, in the order they are listed.",
+      "type": "array",
+      "maxItems": 200,
+      "items": {
+        "$ref": "#/$defs/task"
+      }
+    },
+    "blocked": {
+      "$ref": "#/$defs/blocked"
+    },
+    "notes": {
+      "$ref": "#/$defs/notes"
+    }
+  },
+  "if": {
+    "required": [
+      "blocked"
+    ]
+  },
+  "then": {},
+  "else": {
+    "required": [
+      "title",
+      "slug",
+      "goal",
+      "decisions",
+      "risks",
+      "tasks"
+    ],
+    "properties": {
+      "tasks": {
+        "minItems": 1
+      }
+    }
+  },
+  "$defs": {
+    "blocked": {
+      "description": "The session could not do its work, and says why.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "reason"
+      ],
+      "properties": {
+        "reason": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 16384
+        }
+      }
+    },
+    "notes": {
+      "description": "Anything the schema did not foresee.",
+      "type": "array",
+      "maxItems": 200,
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 4096
+      }
+    },
+    "cites": {
+      "description": "Owner decision ids this one comes from.",
+      "type": "array",
+      "maxItems": 50,
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 100,
+        "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+      }
+    },
+    "decided": {
+      "description": "One '**Decided <date>:** <decision>. <reason>.' line.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "date",
+        "decision",
+        "reason"
+      ],
+      "properties": {
+        "date": {
+          "type": "string",
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+        },
+        "decision": {
+          "description": "What was decided.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 16384
+        },
+        "reason": {
+          "description": "Why.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 16384
+        },
+        "cites": {
+          "$ref": "#/$defs/cites"
+        }
+      }
+    },
+    "task": {
+      "description": "One task of the plan.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "title",
+        "criteria",
+        "named_test",
+        "layer",
+        "size",
+        "depends_on",
+        "text"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100,
+          "pattern": "^[a-z0-9-]+-T[0-9]{3}$",
+          "description": "The plan's slug, then -T and three digits."
+        },
+        "title": {
+          "description": "What the task builds.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "criteria": {
+          "description": "Two to five things a test can check.",
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 5,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000
+          }
+        },
+        "named_test": {
+          "description": "The file and the test that will prove the task.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "layer": {
+          "description": "The leaf that holds the work, by path in the project.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "size": {
+          "description": "S (under 100 changed lines), M (100 to 400) or L (split it: readiness refuses L).",
+          "type": "string",
+          "enum": [
+            "S",
+            "M",
+            "L"
+          ]
+        },
+        "depends_on": {
+          "description": "Ids of the tasks that come first.",
+          "type": "array",
+          "maxItems": 50,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100,
+            "pattern": "^[a-z0-9-]+-T[0-9]{3}$"
+          }
+        },
+        "text": {
+          "description": "The planner's words for the implementer: behaviour, routes, fields, limits, errors.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 65536
+        },
+        "contract": {
+          "description": "The OpenAPI text the task adds or calls, verbatim.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 65536
+        }
+      }
+    }
+  }
+}

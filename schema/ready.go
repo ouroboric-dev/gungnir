@@ -1,9 +1,12 @@
 package schema
 
 import (
+	"errors"
 	"fmt"
 	"slices"
 	"strings"
+
+	"go.yaml.in/yaml/v3"
 )
 
 // Problem is one reason a task is not ready.
@@ -31,7 +34,8 @@ func (e *ReadinessError) Error() string {
 }
 
 // CheckReady applies the Definition of Ready to a plan: every task has acceptance criteria, a named
-// test, a layer, a size of S or M (L means split it), and dependencies that are tasks of the plan,
+// test, a layer, a size of S or M (L means split it), a text and a contract within their bounds (the contract, when
+// given, an OpenAPI document), and dependencies that are tasks of the plan,
 // without a ring; and no two ids are the same node id. leaves, when given, are the paths a layer may
 // name. The error is a *ReadinessError that lists everything, not the first problem.
 func CheckReady(fs []Feature, leaves []string) error {
@@ -71,6 +75,16 @@ func CheckReady(fs []Feature, leaves []string) error {
 		default:
 			add(f, "size %q is not S, M or L", f.Size)
 		}
+		if n := len(f.Text); n > MaxTaskText {
+			add(f, "its text is %d bytes, over %d: split the task or cut its text", n, MaxTaskText)
+		}
+		if n := len(f.Contract); n > MaxTaskContract {
+			add(f, "its contract is %d bytes, over %d: split the task or cut its contract", n, MaxTaskContract)
+		} else if f.Contract != "" {
+			if err := checkOpenAPI(f.Contract); err != nil {
+				add(f, "its contract is not an OpenAPI document: %v", err)
+			}
+		}
 		for _, d := range f.DependsOn {
 			switch _, ok := byID[d]; {
 			case d == f.ID:
@@ -87,6 +101,24 @@ func CheckReady(fs []Feature, leaves []string) error {
 	}
 	if len(ps) > 0 {
 		return &ReadinessError{Problems: ps}
+	}
+	return nil
+}
+
+// checkOpenAPI accepts a document that parses as YAML (JSON is YAML) with a string "openapi" and a mapping "paths".
+func checkOpenAPI(contract string) error {
+	var doc struct {
+		OpenAPI any `yaml:"openapi"`
+		Paths   any `yaml:"paths"`
+	}
+	if err := yaml.Unmarshal([]byte(contract), &doc); err != nil {
+		return fmt.Errorf("it does not parse as YAML: %w", err)
+	}
+	if v, ok := doc.OpenAPI.(string); !ok || v == "" {
+		return errors.New("it has no \"openapi\" version string")
+	}
+	if _, ok := doc.Paths.(map[string]any); !ok {
+		return errors.New("it has no \"paths\" mapping")
 	}
 	return nil
 }
