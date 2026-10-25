@@ -23,6 +23,8 @@ type Graph struct {
 	Version string `yaml:"version"`
 	Schema  int    `yaml:"schema"` // the graph schema version, at least 1 and at most GraphSchema
 	Nodes   []Node `yaml:"nodes"`
+
+	file string // the graph file's name, for the errors of CheckPrompts; set by ParseGraph
 }
 
 // NodeKind is what a node does.
@@ -200,6 +202,7 @@ func ParseGraph(file string, data []byte) (*Graph, error) {
 	if err := g.CheckTypes(); err != nil {
 		return nil, fmt.Errorf("%s: %w", file, err)
 	}
+	g.file = filepath.Base(file)
 	return &g, nil
 }
 

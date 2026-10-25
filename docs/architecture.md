@@ -95,7 +95,13 @@ The contract: Go interface types and JSON schemas for ledger events, `graph.yaml
   `ygg.review/v1`, `task` outside a foreach body, `change`, `open_findings` or `check_results` for a node that is not a loop or its reviewer, or `record`
   before the grade, and a node a gate re-runs without `rejection` in its input or a `back_to` target without
   `refusal` (`rejection` is a person's gate rejection; `refusal` the factory's: readiness, merge, pointer or the
-  owner-decision check). After
+  owner-decision check). `Graph.CheckPrompts(dir)` is the load rule for prompts (ruling R66): a prompt names an
+  input when it holds, in backticks, a built-in source or the id of a node of the graph that declares an output
+  (`PromptInputs` reads that), and it may name only the inputs its session declares. It walks every agent node,
+  loop, reviewer and foreach body, skips a session with no `prompt` (a realm's loop), and refuses a missing
+  prompt file or a path outside the pack, naming the graph file, the node (and reviewer), the prompt and the input.
+  Prose without backticks is not checked. `ParseGraph` does not call it, since it has no pack folder; the
+  fixture `testdata/graphs/software.yaml` has no prompt files beside it, so it is not run against it. After
   the `grade` node only a read-only or scratch agent that outputs `ygg.retro/v1` may follow.
 - `Task.Output` names the contract a session returns, and `Result.Submitted` holds the output document of the last
   accepted `submit`; when that call named a draft file, the adapter reads the file from the workspace. An adapter that hands outputs back through `ygg-submit` implements `Submitter`.
