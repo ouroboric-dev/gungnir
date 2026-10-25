@@ -495,6 +495,43 @@
           "type": "integer",
           "minimum": 0
         },
+        "findings": {
+          "description": "The task's findings by source and severity: how many were raised and how many closed.",
+          "type": "array",
+          "maxItems": 200,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "source",
+              "severity",
+              "raised",
+              "closed"
+            ],
+            "properties": {
+              "source": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "severity": {
+                "enum": [
+                  "blocker",
+                  "major",
+                  "minor"
+                ]
+              },
+              "raised": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "closed": {
+                "type": "integer",
+                "minimum": 0
+              }
+            }
+          }
+        },
         "lines": {
           "description": "The lines the task added, from git diff --numstat of its leaf.",
           "type": "object",
