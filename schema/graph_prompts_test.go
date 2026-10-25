@@ -154,3 +154,35 @@ func TestPromptInputs(t *testing.T) {
 		t.Errorf("PromptInputs() = %v, want %v", got, want)
 	}
 }
+
+func TestCheckPromptsCountsANameInAFencedBlock(t *testing.T) {
+	g, err := ParseGraph("graph.yaml", typed(promptNodes))
+	if err != nil {
+		t.Fatal(err)
+	}
+	dir := packWith(t, map[string]string{
+		"prompts/design.md": "`brief`",
+		"prompts/spec.md":   "`brief` `design`\n```\nsee `decisions`\n```\n",
+	})
+	err = g.CheckPrompts(dir)
+	if err == nil || !strings.Contains(err.Error(), "names the input `decisions`") {
+		t.Errorf("CheckPrompts() = %v, want the fenced `decisions` refused", err)
+	}
+}
+
+func TestCheckPromptsWalksANestedForeach(t *testing.T) {
+	g := &Graph{Nodes: []Node{
+		{ID: "plan", Kind: KindAgent, Output: string(ContractPlan)},
+		{ID: "outer", Kind: KindForeach, Body: []Node{
+			{ID: "inner", Kind: KindForeach, Body: []Node{
+				{ID: "deep", Kind: KindAgent, Prompt: "prompts/deep.md", Input: []string{SourceTask}, Output: string(ContractSpec)},
+			}},
+		}},
+	}}
+	dir := packWith(t, map[string]string{"prompts/deep.md": "`task` and `plan`"})
+	err := g.CheckPrompts(dir)
+	want := "node deep: prompts/deep.md names the input `plan`, which the session does not declare"
+	if err == nil || !strings.Contains(err.Error(), want) {
+		t.Errorf("CheckPrompts() = %v, want an error containing %q", err, want)
+	}
+}

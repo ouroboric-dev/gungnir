@@ -100,7 +100,8 @@ The contract: Go interface types and JSON schemas for ledger events, `graph.yaml
   (`PromptInputs` reads that), and it may name only the inputs its session declares. It walks every agent node,
   loop, reviewer and foreach body, skips a session with no `prompt` (a realm's loop), and refuses a missing
   prompt file or a path outside the pack, naming the graph file, the node (and reviewer), the prompt and the input.
-  Prose without backticks is not checked. `ParseGraph` does not call it, since it has no pack folder; the
+  Prose without backticks is not checked; a backticked name inside a fenced code block counts as named, so an
+  example node id or a node's own id is written as plain prose. `ParseGraph` does not call it, since it has no pack folder; the
   fixture `testdata/graphs/software.yaml` has no prompt files beside it, so it is not run against it. After
   the `grade` node only a read-only or scratch agent that outputs `ygg.retro/v1` may follow.
 - `Task.Output` names the contract a session returns, and `Result.Submitted` holds the output document of the last

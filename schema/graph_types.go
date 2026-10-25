@@ -225,7 +225,8 @@ func (t *typeCheck) inputs(who string, input []string, n Node, visible map[strin
 // PromptInputs returns the inputs a prompt names, each once, in the order the prompt first names them. A prompt
 // names an input when it holds, in backticks, the name of a built-in source or one of outputs, the ids of the
 // graph's nodes that declare an output. A backticked word that is neither is ignored, and so is prose without
-// backticks (change typed-boundaries, ruling R66).
+// backticks (change typed-boundaries, ruling R66). A backticked name inside a fenced code block counts as
+// named. Backticks are for the session's inputs: write an example node id, or the node's own id, as plain prose.
 func PromptInputs(text string, outputs []string) []string {
 	var names []string
 	for _, m := range backticked.FindAllStringSubmatch(text, -1) {
