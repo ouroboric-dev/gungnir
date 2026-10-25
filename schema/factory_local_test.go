@@ -84,7 +84,7 @@ func TestLocalRolesNeedNoUSDCap(t *testing.T) {
 	}
 }
 
-func TestLocalModelIsNotAPaidAPI(t *testing.T) {
+func TestLocalModelIsNotPaid(t *testing.T) {
 	for _, c := range []struct {
 		agent, model string
 		want         bool
@@ -95,8 +95,28 @@ func TestLocalModelIsNotAPaidAPI(t *testing.T) {
 		{"claude-code", "opus", false},
 		{"scripted", "none", false},
 	} {
-		if got := PaidAPI(c.agent, c.model); got != c.want {
-			t.Errorf("PaidAPI(%q, %q) = %v, want %v", c.agent, c.model, got, c.want)
+		if got := PaidModel(c.agent, c.model); got != c.want {
+			t.Errorf("PaidModel(%q, %q) = %v, want %v", c.agent, c.model, got, c.want)
 		}
+	}
+	if !PaidAPI("opencode") || PaidAPI("claude-code") || PaidAPI("scripted") {
+		t.Error("PaidAPI(agent) must keep its meaning: true for opencode, false for claude-code and scripted")
+	}
+}
+
+func TestModelsFileIsCheckedWheneverTheSectionIsThere(t *testing.T) {
+	roles := "roles:\n  reviewer: { agent: claude-code, model: sonnet }\n" + fullCaps + sandboxBlock
+	for name, extra := range map[string]string{
+		"relative": "models:\n  file: models.yaml\n",
+		"unclean":  "models:\n  file: /home/ana/../models.yaml\n",
+		"root":     "models:\n  file: /\n",
+	} {
+		_, err := ParseFactory("factory.yaml", []byte(roles+extra))
+		if err == nil || !strings.Contains(err.Error(), "models.file") {
+			t.Errorf("%s: error = %v, want a refusal naming models.file", name, err)
+		}
+	}
+	if _, err := ParseFactory("factory.yaml", []byte(roles+localModels)); err != nil {
+		t.Errorf("a good models.file without a local role: %v", err)
 	}
 }

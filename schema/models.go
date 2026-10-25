@@ -3,6 +3,7 @@ package schema
 import (
 	"fmt"
 	"path/filepath"
+	"regexp"
 	"slices"
 	"strconv"
 	"strings"
@@ -36,7 +37,14 @@ type LocalModelConfig struct {
 }
 
 // presetKeys are the keys the preset writes itself, so args must not hold them.
-var presetKeys = []string{"model", "ctx-size", "c", "host", "port", "alias"}
+// m and a are the short forms the parser maps to model and alias.
+var presetKeys = []string{"model", "m", "ctx-size", "c", "host", "port", "alias", "a"}
+
+// argKey is a long option name, as llama-server writes it.
+var argKey = regexp.MustCompile(`^[a-z][a-z0-9-]*$`)
+
+// gatePort is where llama-server listens in the same container, so the gate cannot take it.
+const gatePort = 8080
 
 // ParseModels parses the model list: the schema first, then the checks the schema cannot make.
 func ParseModels(file string, data []byte) (*ModelList, error) {
@@ -52,10 +60,10 @@ func ParseModels(file string, data []byte) (*ModelList, error) {
 
 func (l *ModelList) check() error {
 	s := l.Server
-	if !gungnir.ValidModelName(s.Name) {
-		return fmt.Errorf("server name %q must be 1 to 63 characters from a-z, 0-9, '.', '_' and '-', starting with a letter or digit", s.Name)
+	if !gungnir.ValidModelHost(s.Name) {
+		return fmt.Errorf("server name %q must be one DNS label: 1 to 63 characters from a-z, 0-9 and '-', starting and ending with a letter or digit", s.Name)
 	}
-	if !gungnir.ValidModelName(s.Network) {
+	if !gungnir.ValidModelNetwork(s.Network) {
 		return fmt.Errorf("server network %q must be 1 to 63 characters from a-z, 0-9, '.', '_' and '-', starting with a letter or digit", s.Network)
 	}
 	for _, p := range []struct {
@@ -66,9 +74,12 @@ func (l *ModelList) check() error {
 			return fmt.Errorf("server %s %d is outside 1 to 65535", p.what, p.port)
 		}
 	}
+	if s.Port == gatePort {
+		return fmt.Errorf("server port %d is taken: llama-server listens on it in the same container", gatePort)
+	}
 	for _, d := range []struct{ what, path string }{{"weights", s.Weights}, {"state", s.State}} {
-		if !filepath.IsAbs(d.path) || filepath.Clean(d.path) != d.path {
-			return fmt.Errorf("server %s %q must be a clean, absolute path", d.what, d.path)
+		if !filepath.IsAbs(d.path) || filepath.Clean(d.path) != d.path || d.path == "/" {
+			return fmt.Errorf("server %s %q must be a clean, absolute path, and not the root", d.what, d.path)
 		}
 	}
 	for _, name := range sortedKeys(l.Models) {
@@ -97,17 +108,13 @@ func (m LocalModelConfig) check(name string) error {
 		switch {
 		case slices.Contains(presetKeys, key):
 			return fmt.Errorf("model %s: args must not hold %q; the preset writes it", name, key)
-		case key == "" || strings.HasPrefix(key, "-"):
-			return fmt.Errorf("model %s: args key %q must be a long option name without leading '-'", name, key)
-		case strings.ContainsAny(key, "=[]#; \t\r\n"):
-			return fmt.Errorf("model %s: args key %q must be a plain option name", name, key)
+		case !argKey.MatchString(key):
+			return fmt.Errorf("model %s: args key %q must be a long option name matching %s", name, key, argKey)
 		case m.Args[key] == "":
 			return fmt.Errorf("model %s: args %q has an empty value; give \"true\" or \"false\" for a flag", name, key)
 		}
 		if err := plainValue(m.Args[key]); err != nil {
 			return fmt.Errorf("model %s: args %q value %q %w", name, key, m.Args[key], err)
-		}
-		switch {
 		}
 	}
 	return nil

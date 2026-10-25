@@ -67,7 +67,7 @@ func TestModelsNeedAPrice(t *testing.T) {
 }
 
 func TestModelsRefuseArgsThePresetWrites(t *testing.T) {
-	for _, key := range []string{"model", "ctx-size", "c", "host", "port", "alias"} {
+	for _, key := range []string{"model", "ctx-size", "c", "host", "port", "alias", "m", "a"} {
 		yaml := oneModel("    args:\n      " + key + ": x\n    price: { input: 1, output: 1 }\n")
 		_, err := ParseModels("models.yaml", []byte(yaml))
 		if err == nil || !strings.Contains(err.Error(), `"`+key+`"`) {
@@ -113,29 +113,46 @@ func TestModelsRefuseBadArgs(t *testing.T) {
 
 func TestModelsRefuseABadServer(t *testing.T) {
 	good := twoModels
-	for name, bad := range map[string]string{
-		"relative weights": strings.Replace(good, "weights: /abs/weights", "weights: weights", 1),
-		"relative state":   strings.Replace(good, "state: /abs/state", "state: state", 1),
-		"unclean weights":  strings.Replace(good, "/abs/weights", "/abs/../weights", 1),
-		"uppercase name":   strings.Replace(good, "name: ygg-models", "name: Ygg", 1),
-		"bad network":      strings.Replace(good, "network: ygg-models", "network: -x", 1),
-		"long name":        strings.Replace(good, "name: ygg-models", "name: a"+strings.Repeat("b", 63), 1),
-		"port 0":           strings.Replace(good, "port: 8089", "port: 0", 1),
-		"port 65536":       strings.Replace(good, "port: 8089", "port: 65536", 1),
-		"host_port 0":      strings.Replace(good, "host_port: 8088", "host_port: 0", 1),
-		"bad model name":   strings.Replace(good, "mtp-27b:", "MTP:", 1),
-		"file escapes":     strings.Replace(good, "file: mtp.gguf", "file: ../mtp.gguf", 1),
-		"file absolute":    strings.Replace(good, "file: mtp.gguf", "file: /mtp.gguf", 1),
-		"empty weights":    strings.Replace(good, "weights: /abs/weights", `weights: ""`, 1),
-		"empty state":      strings.Replace(good, "state: /abs/state", `state: ""`, 1),
-		"host_port 65536":  strings.Replace(good, "host_port: 8088", "host_port: 65536", 1),
-		"no models":        modelsHead + "models: {}\n",
+	// each case: the bad document, and a word the error must hold
+	for name, c := range map[string][2]string{
+		"relative weights": {strings.Replace(good, "weights: /abs/weights", "weights: weights", 1), "weights"},
+		"relative state":   {strings.Replace(good, "state: /abs/state", "state: state", 1), "state"},
+		"unclean weights":  {strings.Replace(good, "/abs/weights", "/abs/../weights", 1), "weights"},
+		"root weights":     {strings.Replace(good, "/abs/weights", "/", 1), "weights"},
+		"root state":       {strings.Replace(good, "/abs/state", "/", 1), "state"},
+		"uppercase name":   {strings.Replace(good, "name: ygg-models", "name: Ygg", 1), "name"},
+		"dotted name":      {strings.Replace(good, "name: ygg-models", "name: models.example.com", 1), "name"},
+		"trailing dot":     {strings.Replace(good, "name: ygg-models", "name: a.", 1), "name"},
+		"underscore name":  {strings.Replace(good, "name: ygg-models", "name: a_b", 1), "name"},
+		"dash first name":  {strings.Replace(good, "name: ygg-models", "name: -a", 1), "name"},
+		"dash last name":   {strings.Replace(good, "name: ygg-models", "name: a-", 1), "name"},
+		"newline name":     {strings.Replace(good, "name: ygg-models", `name: "a\n"`, 1), "name"},
+		"bad network":      {strings.Replace(good, "network: ygg-models", "network: -x", 1), "network"},
+		"long name":        {strings.Replace(good, "name: ygg-models", "name: a"+strings.Repeat("b", 63), 1), "name"},
+		"port 0":           {strings.Replace(good, "port: 8089", "port: 0", 1), "port"},
+		"port -1":          {strings.Replace(good, "port: 8089", "port: -1", 1), "port"},
+		"port 65536":       {strings.Replace(good, "port: 8089", "port: 65536", 1), "port"},
+		"port 8080":        {strings.Replace(good, "port: 8089", "port: 8080", 1), "8080"},
+		"host_port 0":      {strings.Replace(good, "host_port: 8088", "host_port: 0", 1), "host_port"},
+		"host_port 65536":  {strings.Replace(good, "host_port: 8088", "host_port: 65536", 1), "host_port"},
+		"bad model name":   {strings.Replace(good, "mtp-27b:", "MTP:", 1), "MTP"},
+		"file escapes":     {strings.Replace(good, "file: mtp.gguf", "file: ../mtp.gguf", 1), "file"},
+		"file absolute":    {strings.Replace(good, "file: mtp.gguf", "file: /mtp.gguf", 1), "file"},
+		"empty weights":    {strings.Replace(good, "weights: /abs/weights", `weights: ""`, 1), "weights"},
+		"empty state":      {strings.Replace(good, "state: /abs/state", `state: ""`, 1), "state"},
+		"no models":        {modelsHead + "models: {}\n", "models"},
 	} {
-		if bad == good {
+		if c[0] == good {
 			t.Fatalf("%s: the replacement changed nothing", name)
 		}
-		if _, err := ParseModels("models.yaml", []byte(bad)); err == nil {
-			t.Errorf("%s: want a refusal", name)
+		if _, err := ParseModels("models.yaml", []byte(c[0])); err == nil || !strings.Contains(err.Error(), c[1]) {
+			t.Errorf("%s: error = %v, want a refusal naming %s", name, err, c[1])
+		}
+	}
+	for _, port := range []string{"1", "65535"} {
+		doc := strings.Replace(strings.Replace(good, "port: 8089", "port: "+port, 1), "host_port: 8088", "host_port: "+port, 1)
+		if _, err := ParseModels("models.yaml", []byte(doc)); err != nil {
+			t.Errorf("port %s: %v", port, err)
 		}
 	}
 }

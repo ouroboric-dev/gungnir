@@ -105,7 +105,7 @@ type Cap struct {
 
 // Reached returns the first limit of c that u has reached, or nil. A limit is reached when use equals
 // it, so a cap of zero stops everything. Dollars count only when usd is true, which is when a role
-// bills a paid API (see PaidAPI), and then only what was billed (Usage.BilledUSD): a subscription's dollar
+// bills a paid API (see PaidModel), and then only what was billed (Usage.BilledUSD): a subscription's dollar
 // figure is what its sessions would cost on the API, and nobody charges it.
 func (c Cap) Reached(scope gungnir.CapScope, u gungnir.Usage, usd bool) *gungnir.CapError {
 	switch {
@@ -122,7 +122,7 @@ func (c Cap) Reached(scope gungnir.CapScope, u gungnir.Usage, usd bool) *gungnir
 // PaysPerToken reports whether any role of f bills a paid API, so the caps count dollars.
 func (f *Factory) PaysPerToken() bool {
 	for _, r := range f.Roles {
-		if PaidAPI(r.Agent, r.Model) {
+		if PaidModel(r.Agent, r.Model) {
 			return true
 		}
 	}
@@ -135,14 +135,17 @@ var agents = []string{"claude-code", "opencode", "scripted"}
 // KnownAgent reports whether agent is an adapter this schema accepts.
 func KnownAgent(agent string) bool { return slices.Contains(agents, agent) }
 
-// PaidAPI reports whether a role on agent and model bills a paid API. Only adapters known to run on a
-// subscription or at no cost, and local models, return false, so a new adapter needs a spend limit until
-// it is listed.
-func PaidAPI(agent, model string) bool {
+// PaidAPI reports whether an adapter bills a paid API. Only adapters known to run on a
+// subscription or at no cost return false, so a new adapter needs a spend limit until it is listed.
+func PaidAPI(agent string) bool { return agent != "claude-code" && agent != "scripted" }
+
+// PaidModel reports whether a role on agent and model bills a paid API: false for a local model, and
+// otherwise PaidAPI(agent).
+func PaidModel(agent, model string) bool {
 	if _, local := LocalModel(model); local {
 		return false
 	}
-	return agent != "claude-code" && agent != "scripted"
+	return PaidAPI(agent)
 }
 
 // localPrefix starts the reference of a model that a local server runs.
@@ -192,11 +195,14 @@ func (f *Factory) checkLocal() error {
 			needFile = name
 		}
 	}
-	if needFile == "" {
-		return nil
-	}
-	if f.Models == nil || !filepath.IsAbs(f.Models.File) || filepath.Clean(f.Models.File) != f.Models.File {
+	if needFile != "" && f.Models == nil {
 		return fmt.Errorf("role %s names a local model, so models.file must be a clean, absolute path to the model list", needFile)
+	}
+	if m := f.Models; m != nil && (!filepath.IsAbs(m.File) || filepath.Clean(m.File) != m.File || m.File == "/") {
+		if needFile != "" {
+			return fmt.Errorf("role %s names a local model, so models.file must be a clean, absolute path to the model list, not %q", needFile, m.File)
+		}
+		return fmt.Errorf("models.file %q must be a clean, absolute path to the model list", m.File)
 	}
 	return nil
 }
@@ -278,7 +284,7 @@ func checkCaps(file string, doc any) error {
 		agent, _ := role["agent"].(string)
 		model, _ := role["model"].(string)
 		// A model that starts with local/ is the Go checks' to refuse when its name is bad; it asks for no spend limit.
-		if KnownAgent(agent) && !strings.HasPrefix(model, localPrefix) && PaidAPI(agent, model) {
+		if KnownAgent(agent) && !strings.HasPrefix(model, localPrefix) && PaidModel(agent, model) {
 			paid = fmt.Sprintf("role %s runs on %s, which bills a paid API", name, agent)
 			break
 		}
