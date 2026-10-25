@@ -41,6 +41,16 @@ type SandboxSpec struct {
 	// Scratch makes the sandbox hold one plain folder, not a leaf: a planner's workspace (spec §3.3).
 	// It has no git dir.
 	Scratch bool
+	// Models is the shared model server the sandbox reaches over an internal network, or nil for none
+	// (local-models spec §3.6).
+	Models *ModelServer
+}
+
+// ModelServer is the shared model server a sandbox reaches: by Name, on Port, over Network.
+type ModelServer struct {
+	Network string
+	Name    string
+	Port    int
 }
 
 // Service is a container that runs beside the work container.
@@ -63,9 +73,11 @@ const (
 )
 
 var (
-	image       = regexp.MustCompile(`^[a-z0-9][a-z0-9./_-]*(:[A-Za-z0-9._-]+)?@sha256:[0-9a-f]{64}$`)
-	serviceName = regexp.MustCompile(`^[a-z][a-z0-9-]*$`)
-	secretName  = regexp.MustCompile(`(?i)(API_?KEY|TOKEN|SECRET|PASSWORD|CREDENTIAL)`)
+	image        = regexp.MustCompile(`^[a-z0-9][a-z0-9./_-]*(:[A-Za-z0-9._-]+)?@sha256:[0-9a-f]{64}$`)
+	serviceName  = regexp.MustCompile(`^[a-z][a-z0-9-]*$`)
+	modelHost    = regexp.MustCompile(`^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$`)
+	modelNetwork = regexp.MustCompile(`^[a-z0-9][a-z0-9_.-]{0,62}$`)
+	secretName   = regexp.MustCompile(`(?i)(API_?KEY|TOKEN|SECRET|PASSWORD|CREDENTIAL)`)
 )
 
 // ValidImage reports whether ref is an image reference pinned by digest: a pull can only ever give the
@@ -80,6 +92,13 @@ var (
 // ValidHost reports whether h is a plain host name: lower case, with a dot, and no scheme, port,
 // wildcard or address. The firewall opens names, never ranges.
 func ValidHost(h string) bool { return hostName.MatchString(h) }
+
+// ValidModelHost reports whether s may name the model server: one DNS label, so the sandbox's firewall
+// resolves a name on the model network and never a public host (local-models spec §3.6).
+func ValidModelHost(s string) bool { return modelHost.MatchString(s) }
+
+// ValidModelNetwork reports whether s may name the model server's network (local-models spec §3.6).
+func ValidModelNetwork(s string) bool { return modelNetwork.MatchString(s) }
 
 // Validate refuses a spec the driver couldn't build exactly as described.
 func (s SandboxSpec) Validate() error {
@@ -120,6 +139,17 @@ func (s SandboxSpec) Validate() error {
 	}
 	if s.Stack != "" && !ValidStack(s.Stack) {
 		errs = append(errs, fmt.Errorf("stack %q is neither an image pinned by digest nor the tag of a built stack", s.Stack))
+	}
+	if m := s.Models; m != nil {
+		if !ValidModelNetwork(m.Network) {
+			errs = append(errs, fmt.Errorf("models network %q must match %s", m.Network, modelNetwork))
+		}
+		if !ValidModelHost(m.Name) {
+			errs = append(errs, fmt.Errorf("models name %q must be one DNS label, matching %s", m.Name, modelHost))
+		}
+		if m.Port < 1 || m.Port > 65535 {
+			errs = append(errs, fmt.Errorf("models port %d is outside 1 to 65535", m.Port))
+		}
 	}
 	return errors.Join(append(errs, ValidateServices(s.Services))...)
 }

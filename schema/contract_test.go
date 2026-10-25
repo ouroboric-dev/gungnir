@@ -19,7 +19,7 @@ import (
 // otherReaders are the embedded schemas that no contract names: each has its own parser.
 var otherReaders = map[string]bool{
 	"factory": true, "graph": true, "pack": true, "leaves": true, "umbrella": true, "ledger-event": true,
-	"finding": true, "suite": true, "score": true,
+	"finding": true, "suite": true, "score": true, "models": true,
 }
 
 func TestEveryContractHasItsSchema(t *testing.T) {
