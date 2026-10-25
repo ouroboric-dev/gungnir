@@ -422,6 +422,11 @@
         "unpriced_sessions": {
           "type": "integer",
           "description": "Sessions with tokens and no cost: their cost is unknown, not zero."
+        },
+        "local_sessions": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Of sessions: those that ran on a local model (provider local). They bill nothing; their cost_usd is notional."
         }
       }
     },
