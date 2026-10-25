@@ -92,6 +92,9 @@ var (
 // wildcard or address. The firewall opens names, never ranges.
 func ValidHost(h string) bool { return hostName.MatchString(h) }
 
+// ValidModelName reports whether s may name the model server or its network (local-models spec §3.6).
+func ValidModelName(s string) bool { return modelName.MatchString(s) }
+
 // Validate refuses a spec the driver couldn't build exactly as described.
 func (s SandboxSpec) Validate() error {
 	var errs []error

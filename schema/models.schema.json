@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/ouroboric-dev/gungnir/schema/models.schema.json",
+  "title": "The model list of the local models",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["server", "models"],
+  "properties": {
+    "server": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "network", "port", "host_port", "weights", "state"],
+      "properties": {
+        "name": { "type": "string", "description": "the container's name and its name on the network" },
+        "network": { "type": "string", "description": "an internal podman network" },
+        "port": { "type": "integer", "minimum": 1, "maximum": 65535, "description": "the gate's port on that network" },
+        "host_port": { "type": "integer", "minimum": 1, "maximum": 65535, "description": "llama-server on 127.0.0.1 of the host" },
+        "weights": { "type": "string", "minLength": 1, "description": "an absolute folder, mounted read-only at /models" },
+        "state": { "type": "string", "minLength": 1, "description": "an absolute folder for the preset and the allow file" }
+      }
+    },
+    "models": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": { "$ref": "#/$defs/model" }
+    }
+  },
+  "$defs": {
+    "model": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["file", "context", "output", "price"],
+      "properties": {
+        "file": { "type": "string", "minLength": 1, "description": "a relative path under weights" },
+        "context": { "type": "integer", "minimum": 1, "description": "the context size; ctx-size in the preset" },
+        "output": { "type": "integer", "minimum": 1, "description": "the most output tokens OpenCode asks for" },
+        "args": { "type": "object", "additionalProperties": { "type": "string" }, "description": "llama-server preset keys, written as given" },
+        "price": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["input", "output"],
+          "properties": {
+            "input": { "type": "number", "minimum": 0 },
+            "output": { "type": "number", "minimum": 0 },
+            "cache_read": { "type": "number", "minimum": 0 },
+            "cache_write": { "type": "number", "minimum": 0 }
+          }
+        }
+      }
+    }
+  }
+}
