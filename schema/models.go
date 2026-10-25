@@ -79,6 +79,7 @@ func (l *ModelList) check() error {
 	return nil
 }
 
+// A model name may have 64 characters, as local/<name> allows; the server name and network take 63, the engine's limit.
 func (m LocalModelConfig) check(name string) error {
 	if !localName.MatchString(name) {
 		return fmt.Errorf("model %q: the name must be 1 to 64 characters from a-z, 0-9, '.', '_' and '-', starting with a letter or digit", name)
@@ -86,8 +87,11 @@ func (m LocalModelConfig) check(name string) error {
 	if m.Price.Input <= 0 || m.Price.Output <= 0 {
 		return fmt.Errorf("model %s: price.input and price.output are required and above 0", name)
 	}
-	if !filepath.IsLocal(m.File) || strings.ContainsAny(m.File, "\r\n") {
+	if !filepath.IsLocal(m.File) {
 		return fmt.Errorf("model %s: file %q must be a relative path under weights", name, m.File)
+	}
+	if err := plainValue(m.File); err != nil {
+		return fmt.Errorf("model %s: file %q %w", name, m.File, err)
 	}
 	for _, key := range sortedKeys(m.Args) {
 		switch {
@@ -99,9 +103,21 @@ func (m LocalModelConfig) check(name string) error {
 			return fmt.Errorf("model %s: args key %q must be a plain option name", name, key)
 		case m.Args[key] == "":
 			return fmt.Errorf("model %s: args %q has an empty value; give \"true\" or \"false\" for a flag", name, key)
-		case strings.ContainsAny(m.Args[key], "\r\n"):
-			return fmt.Errorf("model %s: args %q must hold one line", name, key)
 		}
+		if err := plainValue(m.Args[key]); err != nil {
+			return fmt.Errorf("model %s: args %q value %q %w", name, key, m.Args[key], err)
+		}
+		switch {
+		}
+	}
+	return nil
+}
+
+// plainValue refuses a value the preset's INI parser could change or refuse: a line break, a comment
+// character, a quote, or whitespace at either end.
+func plainValue(v string) error {
+	if strings.ContainsAny(v, "\r\n#;\"'") || strings.TrimSpace(v) != v {
+		return fmt.Errorf("must hold one line, with no '#', ';' or quote and no space at either end")
 	}
 	return nil
 }

@@ -36,6 +36,7 @@
         "output": { "type": "integer", "minimum": 1, "description": "the most output tokens OpenCode asks for" },
         "args": { "type": "object", "additionalProperties": { "type": "string" }, "description": "llama-server preset keys, written as given" },
         "price": {
+          "description": "dollars per million tokens; ParseModels requires input and output above 0",
           "type": "object",
           "additionalProperties": false,
           "required": ["input", "output"],

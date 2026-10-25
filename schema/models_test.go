@@ -60,8 +60,8 @@ func TestModelsNeedAPrice(t *testing.T) {
 		"zero input": "    price: { input: 0, output: 0.4 }\n",
 	} {
 		_, err := ParseModels("models.yaml", []byte(oneModel(price)))
-		if err == nil || !strings.Contains(err.Error(), "m") {
-			t.Errorf("%s: error = %v, want a refusal naming model m", name, err)
+		if err == nil || !(strings.Contains(err.Error(), "model m") || strings.Contains(err.Error(), "/models/m")) || !strings.Contains(err.Error(), "price") {
+			t.Errorf("%s: error = %v, want a refusal naming model m and price", name, err)
 		}
 	}
 }
@@ -77,16 +77,36 @@ func TestModelsRefuseArgsThePresetWrites(t *testing.T) {
 }
 
 func TestModelsRefuseBadArgs(t *testing.T) {
-	for name, args := range map[string]string{
-		"dash key":     "      --n-gpu-layers: \"9\"\n",
-		"short dash":   "      -ngl: \"9\"\n",
-		"empty value":  "      flash-attn: \"\"\n",
-		"newline":      "      x: \"a\\nb = c\"\n",
-		"not a string": "      n-gpu-layers: 999\n",
+	const price = "    price: { input: 1, output: 1 }\n"
+	// each case: the args block, and what the error must name
+	for name, c := range map[string][2]string{
+		"dash key":      {"      --n-gpu-layers: \"9\"\n", "--n-gpu-layers"},
+		"short dash":    {"      -ngl: \"9\"\n", "-ngl"},
+		"empty value":   {"      flash-attn: \"\"\n", "flash-attn"},
+		"key equals":    {"      \"a=b\": x\n", "a=b"},
+		"key bracket":   {"      \"a[b\": x\n", "a[b"},
+		"key bracket 2": {"      \"a]b\": x\n", "a]b"},
+		"key hash":      {"      \"a#b\": x\n", "a#b"},
+		"key semicolon": {"      \"a;b\": x\n", "a;b"},
+		"key space":     {"      \"a b\": x\n", "a b"},
+		"newline":       {"      x: \"a\\nb = c\"\n", `"x"`},
+		"return":        {"      x: \"a\\rb\"\n", `"x"`},
+		"hash value":    {"      x: \"a # b\"\n", `"x"`},
+		"semi value":    {"      x: \"a;b\"\n", `"x"`},
+		"quote value":   {"      x: \"'a'\"\n", `"x"`},
+		"lead space":    {"      x: \" true\"\n", `"x"`},
+		"trail space":   {"      x: \"true \"\n", `"x"`},
+		"not a string":  {"      n-gpu-layers: 999\n", "n-gpu-layers"},
 	} {
-		yaml := oneModel("    args:\n" + args + "    price: { input: 1, output: 1 }\n")
-		if _, err := ParseModels("models.yaml", []byte(yaml)); err == nil {
-			t.Errorf("%s: want a refusal", name)
+		_, err := ParseModels("models.yaml", []byte(oneModel("    args:\n"+c[0]+price)))
+		if err == nil || !strings.Contains(err.Error(), c[1]) {
+			t.Errorf("%s: error = %v, want a refusal naming %s", name, err, c[1])
+		}
+	}
+	for name, file := range map[string]string{"newline": `"a\nb"`, "return": `"a\rb"`, "hash": `"a.gguf # x"`, "semicolon": `"a;b"`, "quote": `"a'b"`, "edge space": `" a.gguf"`} {
+		yaml := modelsHead + "models:\n  m:\n    file: " + file + "\n    context: 1000\n    output: 100\n" + price
+		if _, err := ParseModels("models.yaml", []byte(yaml)); err == nil || !strings.Contains(err.Error(), "model m") || !strings.Contains(err.Error(), "file") {
+			t.Errorf("file %s: error = %v, want a refusal naming model m and file", name, err)
 		}
 	}
 }
@@ -106,6 +126,9 @@ func TestModelsRefuseABadServer(t *testing.T) {
 		"bad model name":   strings.Replace(good, "mtp-27b:", "MTP:", 1),
 		"file escapes":     strings.Replace(good, "file: mtp.gguf", "file: ../mtp.gguf", 1),
 		"file absolute":    strings.Replace(good, "file: mtp.gguf", "file: /mtp.gguf", 1),
+		"empty weights":    strings.Replace(good, "weights: /abs/weights", `weights: ""`, 1),
+		"empty state":      strings.Replace(good, "state: /abs/state", `state: ""`, 1),
+		"host_port 65536":  strings.Replace(good, "host_port: 8088", "host_port: 65536", 1),
 		"no models":        modelsHead + "models: {}\n",
 	} {
 		if bad == good {
