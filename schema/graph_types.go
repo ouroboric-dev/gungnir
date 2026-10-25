@@ -2,6 +2,9 @@ package schema
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
+	"regexp"
 	"slices"
 )
 
@@ -214,6 +217,112 @@ func (t *typeCheck) inputs(who string, input []string, n Node, visible map[strin
 		}
 		if !slices.Contains(BuiltinSources(), in) {
 			return fmt.Errorf("%s: input %s is neither a node nor a built-in source", who, in)
+		}
+	}
+	return nil
+}
+
+// PromptInputs returns the inputs a prompt names, each once, in the order the prompt first names them. A prompt
+// names an input when it holds, in backticks, the name of a built-in source or one of outputs, the ids of the
+// graph's nodes that declare an output. A backticked word that is neither is ignored, and so is prose without
+// backticks (change typed-boundaries, ruling R66). A backticked name inside a fenced code block counts as
+// named. Backticks are for the session's inputs: write an example node id, or the node's own id, as plain prose.
+func PromptInputs(text string, outputs []string) []string {
+	var names []string
+	for _, m := range backticked.FindAllStringSubmatch(text, -1) {
+		word := m[1]
+		if slices.Contains(names, word) {
+			continue
+		}
+		if slices.Contains(BuiltinSources(), word) || slices.Contains(outputs, word) {
+			names = append(names, word)
+		}
+	}
+	return names
+}
+
+// backticked finds a span of text in backticks that stays on one line.
+var backticked = regexp.MustCompile("`([^`\n]+)`")
+
+// CheckPrompts checks that every prompt names only the inputs its session declares. dir is the graph pack's
+// folder, where the prompt paths resolve. It walks every session, the agent nodes, the loops, a loop's
+// reviewers and the bodies of foreach nodes at any depth, reads its prompt and refuses the first input the
+// prompt names (see PromptInputs) that the session's input does not list. A session with no prompt, such as a
+// loop whose implementer prompt the realm gives, is skipped: Odin checks that prompt with PromptInputs. A prompt
+// path outside dir, or a prompt file that cannot be read, is refused. The error names the graph file, the node
+// (and the reviewer), the prompt and the input.
+func (g *Graph) CheckPrompts(dir string) error {
+	var outputs []string
+	for _, n := range g.allNodes() {
+		if n.Output != "" {
+			outputs = append(outputs, n.ID)
+		}
+	}
+	file := g.file
+	if file == "" {
+		file = "graph.yaml"
+	}
+	c := promptCheck{file: file, dir: dir, outputs: outputs}
+	return c.nodes(g.Nodes)
+}
+
+// allNodes returns every node of the graph, the bodies of foreach nodes at any depth included.
+func (g *Graph) allNodes() []Node {
+	var out []Node
+	var walk func(nodes []Node)
+	walk = func(nodes []Node) {
+		for _, n := range nodes {
+			out = append(out, n)
+			walk(n.Body)
+		}
+	}
+	walk(g.Nodes)
+	return out
+}
+
+type promptCheck struct {
+	file, dir string
+	outputs   []string
+}
+
+func (c promptCheck) nodes(nodes []Node) error {
+	for _, n := range nodes {
+		if n.Kind == KindAgent || n.Kind == KindLoop {
+			input := n.Input
+			if n.Reviews != "" {
+				input = append(slices.Clone(input), n.Reviews)
+			}
+			if err := c.session("node "+n.ID, n.Prompt, input); err != nil {
+				return err
+			}
+			for _, r := range n.Reviewers {
+				if err := c.session(fmt.Sprintf("node %s, reviewer %s", n.ID, r.ID), r.Prompt, r.Input); err != nil {
+					return err
+				}
+			}
+		}
+		if err := c.nodes(n.Body); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// session checks one session's prompt against the input it declares. who names the node, and the reviewer.
+func (c promptCheck) session(who, prompt string, input []string) error {
+	if prompt == "" {
+		return nil
+	}
+	if !filepath.IsLocal(prompt) {
+		return fmt.Errorf("%s: %s: prompt %q must be a path inside the pack", c.file, who, prompt)
+	}
+	data, err := os.ReadFile(filepath.Join(c.dir, prompt))
+	if err != nil {
+		return fmt.Errorf("%s: %s: %s cannot be read: %w", c.file, who, prompt, err)
+	}
+	for _, name := range PromptInputs(string(data), c.outputs) {
+		if !slices.Contains(input, name) {
+			return fmt.Errorf("%s: %s: %s names the input `%s`, which the session does not declare", c.file, who, prompt, name)
 		}
 	}
 	return nil
