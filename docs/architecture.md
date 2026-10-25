@@ -61,7 +61,8 @@ The contract: Go interface types and JSON schemas for ledger events, `graph.yaml
   `deps_bump`). A reward of 0 is still written. A refusal has one reason: `retired`, `missing_suite`,
   `brief_changed`, `bad_manifest` or `bad_task`.
 - Defines `Usage.BilledUSD`, the part of a session's cost that a paid API bills. The dollar caps count it, and not the
-  cost figure of a subscription's sessions, which is what they would cost on the API and which nobody charges.
+  cost figure of a subscription's sessions, which is what they would cost on the API and which nobody charges. A local
+  model (`local/<name>` on an `opencode` role) bills nothing either: `schema.PaidAPI(agent, model)` is false for it.
 - Defines `Tracker`, and the `Board`, `Card` and `Column` it returns: six columns in reading order, a board that is
   checked (no unknown column, no task twice, a blocked card says why).
 - Defines the ledger fields that `ygg metrics` reads: the event `dispute_ignored`, `ygg.finding.origin` (`check` or

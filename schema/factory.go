@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"slices"
 	"strings"
 
@@ -21,7 +22,13 @@ type Factory struct {
 	Skills  Skills                  `yaml:"skills"`
 	Realms  *Realms                 `yaml:"realms"` // where the realm leaves are, so a leaf's pinned realm can be found
 	Graphs  *Graphs                 `yaml:"graphs"` // where the graph packs are, so --graph can name one
+	Models  *Models                 `yaml:"models"` // the model list of the local models; required when a role names local/<name>
 	Grader  *Grader                 `yaml:"grader"` // where the benchmark tasks and the hidden suites are, and the limits of a grading run (spec §11)
+}
+
+// Models says where the operator's list of local models is (local-models spec §3.1).
+type Models struct {
+	File string `yaml:"file"` // an absolute path
 }
 
 // Grader says where grading finds its inputs and how much it may use (spec §11, change benchmark-split).
@@ -115,7 +122,7 @@ func (c Cap) Reached(scope gungnir.CapScope, u gungnir.Usage, usd bool) *gungnir
 // PaysPerToken reports whether any role of f bills a paid API, so the caps count dollars.
 func (f *Factory) PaysPerToken() bool {
 	for _, r := range f.Roles {
-		if PaidAPI(r.Agent) {
+		if PaidAPI(r.Agent, r.Model) {
 			return true
 		}
 	}
@@ -128,9 +135,71 @@ var agents = []string{"claude-code", "opencode", "scripted"}
 // KnownAgent reports whether agent is an adapter this schema accepts.
 func KnownAgent(agent string) bool { return slices.Contains(agents, agent) }
 
-// PaidAPI reports whether an adapter bills a paid API. Only adapters known to run on a
-// subscription or at no cost return false, so a new adapter needs a spend limit until it is listed.
-func PaidAPI(agent string) bool { return agent != "claude-code" && agent != "scripted" }
+// PaidAPI reports whether a role on agent and model bills a paid API. Only adapters known to run on a
+// subscription or at no cost, and local models, return false, so a new adapter needs a spend limit until
+// it is listed.
+func PaidAPI(agent, model string) bool {
+	if _, local := LocalModel(model); local {
+		return false
+	}
+	return agent != "claude-code" && agent != "scripted"
+}
+
+// localPrefix starts the reference of a model that a local server runs.
+const localPrefix = "local/"
+
+var localName = regexp.MustCompile(`^[a-z0-9][a-z0-9._-]{0,63}$`)
+
+// LocalModel reports whether model is a local model reference, local/<name>, and returns its name.
+func LocalModel(model string) (name string, ok bool) {
+	name, found := strings.CutPrefix(model, localPrefix)
+	if !found || !localName.MatchString(name) {
+		return "", false
+	}
+	return name, true
+}
+
+// LocalModels returns the sorted, distinct names of the local models the roles of f use.
+func (f *Factory) LocalModels() []string {
+	var names []string
+	for _, r := range f.Roles {
+		if name, ok := LocalModel(r.Model); ok && !slices.Contains(names, name) {
+			names = append(names, name)
+		}
+	}
+	slices.Sort(names)
+	return names
+}
+
+// checkLocal refuses a role that names a local model wrongly: on an adapter other than opencode, with a
+// bad name, with reasoning (the model list sets the effort), or without an absolute models.file.
+func (f *Factory) checkLocal() error {
+	needFile := ""
+	for _, name := range sortedKeys(f.Roles) {
+		r := f.Roles[name]
+		if !strings.HasPrefix(r.Model, localPrefix) {
+			continue
+		}
+		switch {
+		case r.Agent != "opencode":
+			return fmt.Errorf("role %s: model %s is local, and only opencode roles run local models, not %s", name, r.Model, r.Agent)
+		case !localName.MatchString(strings.TrimPrefix(r.Model, localPrefix)):
+			return fmt.Errorf("role %s: model %q is not local/<name> with a name of 1 to 64 characters from a-z, 0-9, '.', '_' and '-', starting with a letter or digit", name, r.Model)
+		case r.Reasoning != "":
+			return fmt.Errorf("role %s: a local model takes no reasoning; set the effort in the model list", name)
+		}
+		if needFile == "" {
+			needFile = name
+		}
+	}
+	if needFile == "" {
+		return nil
+	}
+	if f.Models == nil || !filepath.IsAbs(f.Models.File) || filepath.Clean(f.Models.File) != f.Models.File {
+		return fmt.Errorf("role %s names a local model, so models.file must be a clean, absolute path to the model list", needFile)
+	}
+	return nil
+}
 
 // CapsError lists the cap fields that factory.yaml lacks.
 type CapsError struct {
@@ -190,6 +259,9 @@ func ParseFactory(file string, data []byte) (*Factory, error) {
 	if err := f.CheckGates(f.Mode); err != nil {
 		return nil, fmt.Errorf("%s: %w", file, err)
 	}
+	if err := f.checkLocal(); err != nil {
+		return nil, fmt.Errorf("%s: %w", file, err)
+	}
 	if err := f.checkSandbox(); err != nil {
 		return nil, fmt.Errorf("%s: %w", file, err)
 	}
@@ -203,7 +275,10 @@ func checkCaps(file string, doc any) error {
 	for _, name := range sortedKeys(roles) {
 		role, _ := roles[name].(map[string]any)
 		// An unknown agent is the schema's to refuse, by name; it never asks for a spend limit.
-		if agent, ok := role["agent"].(string); ok && KnownAgent(agent) && PaidAPI(agent) {
+		agent, _ := role["agent"].(string)
+		model, _ := role["model"].(string)
+		// A model that starts with local/ is the Go checks' to refuse when its name is bad; it asks for no spend limit.
+		if KnownAgent(agent) && !strings.HasPrefix(model, localPrefix) && PaidAPI(agent, model) {
 			paid = fmt.Sprintf("role %s runs on %s, which bills a paid API", name, agent)
 			break
 		}
