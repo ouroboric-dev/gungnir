@@ -170,3 +170,63 @@ func TestModelsPresetMatchesTheGoldenFile(t *testing.T) {
 		t.Errorf("Preset() =\n%s\nwant\n%s", got, want)
 	}
 }
+
+const dlPrice = "    price: { input: 1, output: 1 }\n"
+
+func TestModelsDownloadParses(t *testing.T) {
+	for name, block := range map[string]string{
+		"with revision":    "    download:\n      repo: unsloth/Qwen3-GGUF\n      revision: abc123def\n      files: [a/m.gguf, mmproj.gguf]\n",
+		"without revision": "    download:\n      repo: unsloth/Qwen3-GGUF\n      files: [m.gguf]\n",
+	} {
+		l, err := ParseModels("models.yaml", []byte(oneModel(block+dlPrice)))
+		if err != nil {
+			t.Fatalf("%s: ParseModels() error = %v", name, err)
+		}
+		d := l.Models["m"].Download
+		if d == nil || d.Repo != "unsloth/Qwen3-GGUF" || len(d.Files) == 0 {
+			t.Errorf("%s: Download = %+v", name, d)
+		}
+	}
+	l, err := ParseModels("models.yaml", []byte(oneModel(dlPrice)))
+	if err != nil || l.Models["m"].Download != nil {
+		t.Errorf("no download: %v, %+v", err, l)
+	}
+}
+
+func TestModelsDownloadRefuses(t *testing.T) {
+	for name, c := range map[string]struct{ block, field string }{
+		"bad repo":        {"repo: nofolder\n      files: [m.gguf]\n", "repo"},
+		"repo with space": {"repo: a/b c\n      files: [m.gguf]\n", "repo"},
+		"bad revision":    {"repo: a/b\n      revision: \"x y\"\n      files: [m.gguf]\n", "revision"},
+		"long revision":   {"repo: a/b\n      revision: " + strings.Repeat("a", 65) + "\n      files: [m.gguf]\n", "revision"},
+		"empty files":     {"repo: a/b\n      files: []\n", "files"},
+		"absolute":        {"repo: a/b\n      files: [/etc/m.gguf]\n", "files"},
+		"dotdot":          {"repo: a/b\n      files: [../m.gguf]\n", "files"},
+		"unclean":         {"repo: a/b\n      files: [a//m.gguf]\n", "files"},
+		"space":           {"repo: a/b\n      files: [\"m 1.gguf\"]\n", "files"},
+		"dollar":          {"repo: a/b\n      files: [\"$m.gguf\"]\n", "files"},
+		"duplicate":       {"repo: a/b\n      files: [m.gguf, m.gguf]\n", "files"},
+	} {
+		_, err := ParseModels("models.yaml", []byte(oneModel("    download:\n      "+c.block+dlPrice)))
+		if err == nil {
+			t.Errorf("%s: no error", name)
+			continue
+		}
+		msg := err.Error()
+		if !(strings.Contains(msg, "model m") || strings.Contains(msg, "/models/m")) || !strings.Contains(msg, c.field) {
+			t.Errorf("%s: error = %v, want a refusal naming model m and %s", name, err, c.field)
+		}
+	}
+}
+
+func TestModelsDownloadNeverReachesThePreset(t *testing.T) {
+	with := oneModel("    download:\n      repo: a/b\n      files: [m.gguf]\n" + dlPrice)
+	a, err := ParseModels("models.yaml", []byte(with))
+	if err != nil {
+		t.Fatal(err)
+	}
+	b, _ := ParseModels("models.yaml", []byte(oneModel(dlPrice)))
+	if string(a.Preset()) != string(b.Preset()) {
+		t.Errorf("preset changed with download:\n%s", a.Preset())
+	}
+}
