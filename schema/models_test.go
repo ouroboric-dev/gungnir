@@ -175,15 +175,15 @@ const dlPrice = "    price: { input: 1, output: 1 }\n"
 
 func TestModelsDownloadParses(t *testing.T) {
 	for name, block := range map[string]string{
-		"with revision":    "    download:\n      repo: unsloth/Qwen3-GGUF\n      revision: abc123def\n      files: [a/m.gguf, mmproj.gguf]\n",
-		"without revision": "    download:\n      repo: unsloth/Qwen3-GGUF\n      files: [m.gguf]\n",
+		"with revision":    "    download:\n      repo: unsloth/Qwen3.8-27B-GGUF\n      revision: abc123def\n      files: [MTP/mtp-Qwen3.8-27B-Q4_0.gguf, mmproj.gguf]\n",
+		"without revision": "    download:\n      repo: unsloth/Qwen3.8-27B-GGUF\n      files: [m.gguf]\n",
 	} {
 		l, err := ParseModels("models.yaml", []byte(oneModel(block+dlPrice)))
 		if err != nil {
 			t.Fatalf("%s: ParseModels() error = %v", name, err)
 		}
 		d := l.Models["m"].Download
-		if d == nil || d.Repo != "unsloth/Qwen3-GGUF" || len(d.Files) == 0 {
+		if d == nil || d.Repo != "unsloth/Qwen3.8-27B-GGUF" || len(d.Files) == 0 {
 			t.Errorf("%s: Download = %+v", name, d)
 		}
 	}
@@ -205,6 +205,18 @@ func TestModelsDownloadRefuses(t *testing.T) {
 		"unclean":         {"repo: a/b\n      files: [a//m.gguf]\n", "files"},
 		"space":           {"repo: a/b\n      files: [\"m 1.gguf\"]\n", "files"},
 		"dollar":          {"repo: a/b\n      files: [\"$m.gguf\"]\n", "files"},
+		"dash file":       {"repo: a/b\n      files: [-a.gguf]\n", "files"},
+		"dot":             {"repo: a/b\n      files: [.]\n", "files"},
+		"dots":            {"repo: a/b\n      files: [\"...\"]\n", "files"},
+		"dot slash":       {"repo: a/b\n      files: [./a]\n", "files"},
+		"mid dot":         {"repo: a/b\n      files: [a/./b]\n", "files"},
+		"hidden":          {"repo: a/b\n      files: [a/.hidden]\n", "files"},
+		"dash repo":       {"repo: -x/y\n      files: [m.gguf]\n", "repo"},
+		"dot repo":        {"repo: ./y\n      files: [m.gguf]\n", "repo"},
+		"dotdot repo":     {"repo: ../x\n      files: [m.gguf]\n", "repo"},
+		"hidden repo":     {"repo: .x/y\n      files: [m.gguf]\n", "repo"},
+		"dash revision":   {"repo: a/b\n      revision: -x\n      files: [m.gguf]\n", "revision"},
+		"dot revision":    {"repo: a/b\n      revision: .x\n      files: [m.gguf]\n", "revision"},
 		"duplicate":       {"repo: a/b\n      files: [m.gguf, m.gguf]\n", "files"},
 	} {
 		_, err := ParseModels("models.yaml", []byte(oneModel("    download:\n      "+c.block+dlPrice)))
@@ -228,5 +240,32 @@ func TestModelsDownloadNeverReachesThePreset(t *testing.T) {
 	b, _ := ParseModels("models.yaml", []byte(oneModel(dlPrice)))
 	if string(a.Preset()) != string(b.Preset()) {
 		t.Errorf("preset changed with download:\n%s", a.Preset())
+	}
+}
+
+// The schema refuses these first through ParseModels, so the Go check is tested on its own.
+func TestModelsDownloadGoCheckRefusesOnItsOwn(t *testing.T) {
+	for name, d := range map[string]Download{
+		"dash file":    {Repo: "a/b", Files: []string{"-a.gguf"}},
+		"dot":          {Repo: "a/b", Files: []string{"."}},
+		"dots":         {Repo: "a/b", Files: []string{"..."}},
+		"dot slash":    {Repo: "a/b", Files: []string{"./a"}},
+		"mid dot":      {Repo: "a/b", Files: []string{"a/./b"}},
+		"hidden":       {Repo: "a/b", Files: []string{"a/.hidden"}},
+		"double slash": {Repo: "a/b", Files: []string{"a//b"}},
+		"dotdot":       {Repo: "a/b", Files: []string{".."}},
+		"dash repo":    {Repo: "-x/y", Files: []string{"m"}},
+		"dotdot repo":  {Repo: "../x", Files: []string{"m"}},
+		"hidden repo":  {Repo: ".x/y", Files: []string{"m"}},
+		"dash rev":     {Repo: "a/b", Revision: "-x", Files: []string{"m"}},
+		"duplicate":    {Repo: "a/b", Files: []string{"m", "m"}},
+		"no files":     {Repo: "a/b"},
+	} {
+		if err := d.check("m"); err == nil || !strings.Contains(err.Error(), "model m") {
+			t.Errorf("%s: error = %v", name, err)
+		}
+	}
+	if err := (Download{Repo: "unsloth/Qwen3.8-27B-GGUF", Files: []string{"MTP/mtp-Qwen3.8-27B-Q4_0.gguf"}}).check("m"); err != nil {
+		t.Errorf("valid: %v", err)
 	}
 }

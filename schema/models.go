@@ -50,13 +50,13 @@ type Download struct {
 var presetKeys = []string{"model", "m", "ctx-size", "c", "host", "port", "alias", "a"}
 
 // argKey is a long option name, as llama-server writes it.
-var (
-	downloadRepo     = regexp.MustCompile(`^[A-Za-z0-9._-]+/[A-Za-z0-9._-]+$`)
-	downloadRevision = regexp.MustCompile(`^[A-Za-z0-9._-]{1,64}$`)
-	downloadFile     = regexp.MustCompile(`^[A-Za-z0-9._/+-]+$`)
-)
-
 var argKey = regexp.MustCompile(`^[a-z][a-z0-9-]*$`)
+
+var (
+	downloadRepo     = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]*/[A-Za-z0-9][A-Za-z0-9._-]*$`)
+	downloadRevision = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$`)
+	downloadFile     = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._+-]*(/[A-Za-z0-9][A-Za-z0-9._+-]*)*$`)
+)
 
 // gatePort is where llama-server listens in the same container, so the gate cannot take it.
 const gatePort = 8080
