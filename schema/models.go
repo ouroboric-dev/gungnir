@@ -34,6 +34,15 @@ type LocalModelConfig struct {
 	Output  int               `yaml:"output"`
 	Args    map[string]string `yaml:"args"`
 	Price   Price             `yaml:"price"`
+	// Download says where the file comes from; the preset never holds it.
+	Download *Download `yaml:"download"`
+}
+
+// Download names a Hugging Face repository and the files to fetch from it, under weights.
+type Download struct {
+	Repo     string   `yaml:"repo"`
+	Revision string   `yaml:"revision"`
+	Files    []string `yaml:"files"`
 }
 
 // presetKeys are the keys the preset writes itself, so args must not hold them.
@@ -42,6 +51,12 @@ var presetKeys = []string{"model", "m", "ctx-size", "c", "host", "port", "alias"
 
 // argKey is a long option name, as llama-server writes it.
 var argKey = regexp.MustCompile(`^[a-z][a-z0-9-]*$`)
+
+var (
+	downloadRepo     = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]*/[A-Za-z0-9][A-Za-z0-9._-]*$`)
+	downloadRevision = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$`)
+	downloadFile     = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._+-]*(/[A-Za-z0-9][A-Za-z0-9._+-]*)*$`)
+)
 
 // gatePort is where llama-server listens in the same container, so the gate cannot take it.
 const gatePort = 8080
@@ -104,6 +119,11 @@ func (m LocalModelConfig) check(name string) error {
 	if err := plainValue(m.File); err != nil {
 		return fmt.Errorf("model %s: file %q %w", name, m.File, err)
 	}
+	if m.Download != nil {
+		if err := m.Download.check(name); err != nil {
+			return err
+		}
+	}
 	for _, key := range sortedKeys(m.Args) {
 		switch {
 		case slices.Contains(presetKeys, key):
@@ -116,6 +136,29 @@ func (m LocalModelConfig) check(name string) error {
 		if err := plainValue(m.Args[key]); err != nil {
 			return fmt.Errorf("model %s: args %q value %q %w", name, key, m.Args[key], err)
 		}
+	}
+	return nil
+}
+
+func (d Download) check(name string) error {
+	if !downloadRepo.MatchString(d.Repo) {
+		return fmt.Errorf("model %s: download.repo %q must be owner/name, matching %s", name, d.Repo, downloadRepo)
+	}
+	if d.Revision != "" && !downloadRevision.MatchString(d.Revision) {
+		return fmt.Errorf("model %s: download.revision %q must match %s", name, d.Revision, downloadRevision)
+	}
+	if len(d.Files) == 0 {
+		return fmt.Errorf("model %s: download.files needs at least one file", name)
+	}
+	seen := map[string]bool{}
+	for _, f := range d.Files {
+		if filepath.Clean(f) != f || !filepath.IsLocal(f) || !downloadFile.MatchString(f) {
+			return fmt.Errorf("model %s: download.files %q must be a clean relative path matching %s", name, f, downloadFile)
+		}
+		if seen[f] {
+			return fmt.Errorf("model %s: download.files lists %q twice", name, f)
+		}
+		seen[f] = true
 	}
 	return nil
 }
