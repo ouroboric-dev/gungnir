@@ -128,6 +128,9 @@
     "refused": {
       "planner codex gpt": 2
     },
+    "turn_limited": {
+      "planner codex gpt": 1
+    },
     "repaired": {
       "planner codex gpt": 1
     },

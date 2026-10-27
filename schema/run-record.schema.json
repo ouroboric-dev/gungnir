@@ -319,6 +319,14 @@
             "minimum": 0
           }
         },
+        "turn_limited": {
+          "description": "\"role agent model\": how many of its refused outputs were a session at its turn cap (failure kind turn-limit); a subset of refused, so never above the same key's refused count.",
+          "type": "object",
+          "additionalProperties": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
         "repaired": {
           "description": "\"role agent model\": how many refused outputs a repair session mended.",
           "type": "object",
