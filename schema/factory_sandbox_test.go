@@ -71,6 +71,26 @@ func TestRolePrice(t *testing.T) {
 	}
 }
 
+// YAML reads .nan, .inf and -.inf as floats. The YAML-to-JSON step refuses them before the schema runs, so the error
+// must name the field, not blame a key.
+func TestRolePriceMustBeFinite(t *testing.T) {
+	caps := "budget:\n  per_run: { tokens: 1, turns: 1, usd: 1 }\n  per_day: { tokens: 1, turns: 1, usd: 1 }\n"
+	for _, bad := range []string{".nan", ".inf", "-.inf"} {
+		for _, field := range []string{"input", "output", "cache_read", "cache_write"} {
+			p := "{ input: 1, output: 1, " + field + ": " + bad + " }"
+			if field == "input" || field == "output" {
+				p = "{ input: 1, output: 1 }"
+				p = strings.Replace(p, field+": 1", field+": "+bad, 1)
+			}
+			roles := "roles:\n  reviewer: { agent: opencode, model: openrouter/x/y, price: " + p + " }\n"
+			_, err := ParseFactory("factory.yaml", []byte(roles+caps+sandboxBlock))
+			if err == nil || !strings.Contains(err.Error(), "price."+field) || strings.Contains(err.Error(), "key") {
+				t.Errorf("price.%s = %s: ParseFactory() error = %v, want a refusal naming price.%s", field, bad, err, field)
+			}
+		}
+	}
+}
+
 func TestRoleReasoning(t *testing.T) {
 	caps := "budget:\n  per_run: { tokens: 1, turns: 1, usd: 1 }\n  per_day: { tokens: 1, turns: 1, usd: 1 }\n"
 	load := func(setting string) (*Factory, error) {

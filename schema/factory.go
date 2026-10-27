@@ -2,6 +2,7 @@ package schema
 
 import (
 	"fmt"
+	"math"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -87,6 +88,26 @@ type Price struct {
 	Output     float64 `yaml:"output"`
 	CacheRead  float64 `yaml:"cache_read"`
 	CacheWrite float64 `yaml:"cache_write"`
+}
+
+// check refuses a price that is not a finite number: NaN makes every cap comparison false, and infinity never trips one.
+// Every price is not negative; with paid, input and output are also above 0, as a local model's price is.
+func (p Price) check(paid bool) error {
+	for _, c := range []struct {
+		field string
+		v     float64
+		above bool
+	}{{"input", p.Input, paid}, {"output", p.Output, paid}, {"cache_read", p.CacheRead, false}, {"cache_write", p.CacheWrite, false}} {
+		switch {
+		case math.IsNaN(c.v) || math.IsInf(c.v, 0):
+			return fmt.Errorf("price.%s must be a finite number", c.field)
+		case c.v < 0:
+			return fmt.Errorf("price.%s must not be negative", c.field)
+		case c.above && c.v == 0:
+			return fmt.Errorf("price.%s is required and above 0", c.field)
+		}
+	}
+	return nil
 }
 
 // Budget holds the caps. Both are required, and the factory ships no default values.
@@ -267,6 +288,13 @@ func ParseFactory(file string, data []byte) (*Factory, error) {
 	}
 	if err := f.checkLocal(); err != nil {
 		return nil, fmt.Errorf("%s: %w", file, err)
+	}
+	for _, name := range sortedKeys(f.Roles) {
+		if p := f.Roles[name].Price; p != nil {
+			if err := p.check(false); err != nil {
+				return nil, fmt.Errorf("%s: role %s: %w", file, name, err)
+			}
+		}
 	}
 	if err := f.checkSandbox(); err != nil {
 		return nil, fmt.Errorf("%s: %w", file, err)

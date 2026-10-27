@@ -1,6 +1,7 @@
 package schema
 
 import (
+	"math"
 	"os"
 	"strings"
 	"testing"
@@ -266,6 +267,64 @@ func TestModelsDownloadGoCheckRefusesOnItsOwn(t *testing.T) {
 		}
 	}
 	if err := (Download{Repo: "unsloth/Qwen3.8-27B-GGUF", Files: []string{"MTP/mtp-Qwen3.8-27B-Q4_0.gguf"}}).check("m"); err != nil {
+		t.Errorf("valid: %v", err)
+	}
+}
+
+// YAML reads .nan, .inf and -.inf as floats. The YAML-to-JSON step refuses them before the schema runs, so the error
+// must name the field, not blame a key.
+func TestModelsRefuseAPriceThatIsNotFinite(t *testing.T) {
+	for _, bad := range []string{".nan", ".inf", "-.inf"} {
+		for name, price := range map[string]string{
+			"price.input":       "{ input: " + bad + ", output: 0.4 }",
+			"price.output":      "{ input: 0.1, output: " + bad + " }",
+			"price.cache_read":  "{ input: 0.1, output: 0.4, cache_read: " + bad + " }",
+			"price.cache_write": "{ input: 0.1, output: 0.4, cache_write: " + bad + " }",
+		} {
+			_, err := ParseModels("models.yaml", []byte(oneModel("    price: "+price+"\n")))
+			if err == nil || !strings.Contains(err.Error(), name) || strings.Contains(err.Error(), "key") {
+				t.Errorf("%s = %s: error = %v, want a refusal naming %s", name, bad, err, name)
+			}
+		}
+	}
+}
+
+// The schema refuses a negative cache price first; the Go check holds the same line on its own.
+func TestModelsRefuseANegativeCachePrice(t *testing.T) {
+	for _, field := range []string{"cache_read", "cache_write"} {
+		_, err := ParseModels("models.yaml", []byte(oneModel("    price: { input: 0.1, output: 0.4, "+field+": -1 }\n")))
+		if err == nil || !strings.Contains(err.Error(), "/price/"+field) {
+			t.Errorf("%s = -1: error = %v, want a refusal naming %s", field, err, field)
+		}
+	}
+	if _, err := ParseModels("models.yaml", []byte(oneModel("    price: { input: 0.1, output: 0.4, cache_read: 0, cache_write: 0 }\n"))); err != nil {
+		t.Errorf("a cache price of 0: error = %v, want none", err)
+	}
+}
+
+// The Go check is the second line, so it is tested on its own with the values the schema step cannot pass on.
+func TestModelsPriceGoCheckRefusesOnItsOwn(t *testing.T) {
+	nan, inf := math.NaN(), math.Inf(1)
+	for name, p := range map[string]Price{
+		"nan input":   {Input: nan, Output: 1},
+		"inf input":   {Input: inf, Output: 1},
+		"-inf input":  {Input: -inf, Output: 1},
+		"nan output":  {Input: 1, Output: nan},
+		"inf output":  {Input: 1, Output: inf},
+		"zero output": {Input: 1},
+		"nan read":    {Input: 1, Output: 1, CacheRead: nan},
+		"inf read":    {Input: 1, Output: 1, CacheRead: inf},
+		"neg read":    {Input: 1, Output: 1, CacheRead: -1},
+		"nan write":   {Input: 1, Output: 1, CacheWrite: nan},
+		"-inf write":  {Input: 1, Output: 1, CacheWrite: -inf},
+		"neg write":   {Input: 1, Output: 1, CacheWrite: -0.5},
+	} {
+		err := LocalModelConfig{File: "m.gguf", Price: p}.check("m")
+		if err == nil || !strings.Contains(err.Error(), "model m") || !strings.Contains(err.Error(), "price") {
+			t.Errorf("%s: error = %v, want a refusal naming model m and price", name, err)
+		}
+	}
+	if err := (LocalModelConfig{File: "m.gguf", Price: Price{Input: 1, Output: 1, CacheRead: 0, CacheWrite: 0.5}}).check("m"); err != nil {
 		t.Errorf("valid: %v", err)
 	}
 }
