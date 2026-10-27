@@ -94,7 +94,7 @@ func TestModelsRefuseBadArgs(t *testing.T) {
 		"return":        {"      x: \"a\\rb\"\n", `"x"`},
 		"hash value":    {"      x: \"a # b\"\n", `"x"`},
 		"semi value":    {"      x: \"a;b\"\n", `"x"`},
-		"quote value":   {"      x: \"'a'\"\n", `"x"`},
+		"edge tab":      {"      x: \"a\\t\"\n", `"x"`},
 		"lead space":    {"      x: \" true\"\n", `"x"`},
 		"trail space":   {"      x: \"true \"\n", `"x"`},
 		"not a string":  {"      n-gpu-layers: 999\n", "n-gpu-layers"},
@@ -104,10 +104,24 @@ func TestModelsRefuseBadArgs(t *testing.T) {
 			t.Errorf("%s: error = %v, want a refusal naming %s", name, err, c[1])
 		}
 	}
-	for name, file := range map[string]string{"newline": `"a\nb"`, "return": `"a\rb"`, "hash": `"a.gguf # x"`, "semicolon": `"a;b"`, "quote": `"a'b"`, "edge space": `" a.gguf"`} {
+	for name, file := range map[string]string{"newline": `"a\nb"`, "return": `"a\rb"`, "hash": `"a.gguf # x"`, "semicolon": `"a;b"`, "quote": `"a'b"`, "dquote": `"a\"b"`, "edge space": `" a.gguf"`} {
 		yaml := modelsHead + "models:\n  m:\n    file: " + file + "\n    context: 1000\n    output: 100\n" + price
 		if _, err := ParseModels("models.yaml", []byte(yaml)); err == nil || !strings.Contains(err.Error(), "model m") || !strings.Contains(err.Error(), "file") {
 			t.Errorf("file %s: error = %v, want a refusal naming model m and file", name, err)
+		}
+	}
+}
+
+func TestModelsArgsValuesMayHoldQuotes(t *testing.T) {
+	const doc = "    args:\n      chat-template-kwargs: '{\"enable_thinking\":false}'\n      x: \"'x'\"\n"
+	l, err := ParseModels("models.yaml", []byte(oneModel(doc+dlPrice)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := string(l.Preset())
+	for _, line := range []string{"chat-template-kwargs = {\"enable_thinking\":false}\n", "x = 'x'\n"} {
+		if !strings.Contains(got, line) {
+			t.Errorf("Preset() =\n%s\nwant the line %q unchanged", got, line)
 		}
 	}
 }

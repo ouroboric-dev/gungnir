@@ -116,7 +116,7 @@ func (m LocalModelConfig) check(name string) error {
 	if !filepath.IsLocal(m.File) {
 		return fmt.Errorf("model %s: file %q must be a relative path under weights", name, m.File)
 	}
-	if err := plainValue(m.File); err != nil {
+	if err := plainValue(m.File, false); err != nil {
 		return fmt.Errorf("model %s: file %q %w", name, m.File, err)
 	}
 	if m.Download != nil {
@@ -133,7 +133,7 @@ func (m LocalModelConfig) check(name string) error {
 		case m.Args[key] == "":
 			return fmt.Errorf("model %s: args %q has an empty value; give \"true\" or \"false\" for a flag", name, key)
 		}
-		if err := plainValue(m.Args[key]); err != nil {
+		if err := plainValue(m.Args[key], true); err != nil {
 			return fmt.Errorf("model %s: args %q value %q %w", name, key, m.Args[key], err)
 		}
 	}
@@ -163,10 +163,14 @@ func (d Download) check(name string) error {
 	return nil
 }
 
-// plainValue refuses a value the preset's INI parser could change or refuse: a line break, a comment
-// character, a quote, or whitespace at either end.
-func plainValue(v string) error {
-	if strings.ContainsAny(v, "\r\n#;\"'") || strings.TrimSpace(v) != v {
+// plainValue refuses a value the preset's INI parser could end or trim: a line break, '#' or ';', or
+// whitespace at either end. With quotes false it refuses a quote too: the parser keeps one as a plain
+// character, but a file name never needs one.
+func plainValue(v string, quotes bool) error {
+	if strings.ContainsAny(v, "\r\n#;") || strings.TrimSpace(v) != v {
+		return fmt.Errorf("must hold one line, with no '#' or ';' and no space at either end")
+	}
+	if !quotes && strings.ContainsAny(v, "\"'") {
 		return fmt.Errorf("must hold one line, with no '#', ';' or quote and no space at either end")
 	}
 	return nil
