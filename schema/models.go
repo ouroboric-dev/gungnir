@@ -110,8 +110,8 @@ func (m LocalModelConfig) check(name string) error {
 	if !localName.MatchString(name) {
 		return fmt.Errorf("model %q: the name must be 1 to 64 characters from a-z, 0-9, '.', '_' and '-', starting with a letter or digit", name)
 	}
-	if m.Price.Input <= 0 || m.Price.Output <= 0 {
-		return fmt.Errorf("model %s: price.input and price.output are required and above 0", name)
+	if err := m.Price.check(true); err != nil {
+		return fmt.Errorf("model %s: %w", name, err)
 	}
 	if !filepath.IsLocal(m.File) {
 		return fmt.Errorf("model %s: file %q must be a relative path under weights", name, m.File)

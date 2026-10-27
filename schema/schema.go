@@ -9,6 +9,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
+	"strings"
 
 	"github.com/santhosh-tekuri/jsonschema/v6"
 	"go.yaml.in/yaml/v3"
@@ -69,9 +71,34 @@ func decodeYAML(file string, data []byte) (any, error) {
 	}
 	raw, err := json.Marshal(doc)
 	if err != nil {
+		// .nan, .inf and -.inf are floats in YAML and have no JSON form; say where one is, not that a key is wrong.
+		if path, ok := nonFinite(doc, ""); ok {
+			return nil, fmt.Errorf("%s: %s must be a finite number", file, path)
+		}
 		return nil, fmt.Errorf("%s: every key must be a string: %w", file, err)
 	}
 	return jsonschema.UnmarshalJSON(bytes.NewReader(raw))
+}
+
+// nonFinite returns the dotted path of the first NaN or infinity in a decoded document, in key order.
+func nonFinite(v any, path string) (string, bool) {
+	switch v := v.(type) {
+	case float64:
+		return path, math.IsNaN(v) || math.IsInf(v, 0)
+	case map[string]any:
+		for _, k := range sortedKeys(v) {
+			if p, ok := nonFinite(v[k], strings.TrimPrefix(path+"."+k, ".")); ok {
+				return p, true
+			}
+		}
+	case []any:
+		for i, e := range v {
+			if p, ok := nonFinite(e, fmt.Sprintf("%s[%d]", path, i)); ok {
+				return p, true
+			}
+		}
+	}
+	return "", false
 }
 
 // decodeStrict decodes one YAML document into v and refuses unknown fields.
