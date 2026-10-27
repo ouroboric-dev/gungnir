@@ -289,6 +289,7 @@ func ParseFactory(file string, data []byte) (*Factory, error) {
 	if err := f.checkLocal(); err != nil {
 		return nil, fmt.Errorf("%s: %w", file, err)
 	}
+	// YAML and the schema refuse a non-finite or negative price first; this holds the line for a change there. 0 is allowed, as in the schema.
 	for _, name := range sortedKeys(f.Roles) {
 		if p := f.Roles[name].Price; p != nil {
 			if err := p.check(false); err != nil {

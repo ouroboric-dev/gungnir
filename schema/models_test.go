@@ -289,7 +289,7 @@ func TestModelsRefuseAPriceThatIsNotFinite(t *testing.T) {
 	}
 }
 
-// The schema refuses a negative cache price first; the Go check holds the same line on its own.
+// The schema refuses a negative cache price and accepts 0; TestModelsPriceGoCheckRefusesOnItsOwn covers the Go check.
 func TestModelsRefuseANegativeCachePrice(t *testing.T) {
 	for _, field := range []string{"cache_read", "cache_write"} {
 		_, err := ParseModels("models.yaml", []byte(oneModel("    price: { input: 0.1, output: 0.4, "+field+": -1 }\n")))
