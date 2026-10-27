@@ -103,7 +103,7 @@ func TestFindingValidate(t *testing.T) {
 }
 
 func TestAResultNamesHowItFailed(t *testing.T) {
-	for _, k := range []FailureKind{"", FailureAgent, FailureTransient, FailureQuota, FailureTokenLimit} {
+	for _, k := range []FailureKind{"", FailureAgent, FailureTransient, FailureQuota, FailureTokenLimit, FailureTurnLimit} {
 		if err := (Result{Status: StatusFailed, Failure: k}).Validate(); err != nil {
 			t.Errorf("failure %q: Validate() = %v, want nil", k, err)
 		}
@@ -119,6 +119,10 @@ func TestAResultNamesHowItFailed(t *testing.T) {
 			t.Errorf("%s: Validate() = nil, want an error", name)
 		}
 	}
+	err := (Result{Status: StatusFailed, Failure: "flaky"}).Validate()
+	if err == nil || !strings.Contains(err.Error(), "turn-limit") {
+		t.Errorf("the unknown-kind error must list turn-limit: %v", err)
+	}
 	if err := (Result{Status: StatusOK, Output: strings.Repeat("x", MaxOutput)}).Validate(); err != nil {
 		t.Errorf("an answer at the limit: Validate() = %v, want nil", err)
 	}
@@ -132,6 +136,7 @@ func TestFailureOfReadsASessionError(t *testing.T) {
 	}{
 		"a quota error":            {quota, FailureQuota},
 		"a token limit":            {&SessionError{Kind: FailureTokenLimit, Err: errors.New("400000 tokens used")}, FailureTokenLimit},
+		"a turn limit":             {&SessionError{Kind: FailureTurnLimit, Err: errors.New("30 turns used")}, FailureTurnLimit},
 		"an infra error":           {&SessionError{Kind: FailureInfra, Err: errors.New("podman")}, FailureInfra},
 		"a session error w/o kind": {&SessionError{Err: errors.New("x")}, FailureAgent},
 		"a plain error":            {errors.New("exit 1"), FailureAgent},
