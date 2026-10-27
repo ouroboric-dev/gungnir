@@ -104,7 +104,7 @@ func TestModelsRefuseBadArgs(t *testing.T) {
 			t.Errorf("%s: error = %v, want a refusal naming %s", name, err, c[1])
 		}
 	}
-	for name, file := range map[string]string{"newline": `"a\nb"`, "return": `"a\rb"`, "hash": `"a.gguf # x"`, "semicolon": `"a;b"`, "quote": `"a'b"`, "edge space": `" a.gguf"`} {
+	for name, file := range map[string]string{"newline": `"a\nb"`, "return": `"a\rb"`, "hash": `"a.gguf # x"`, "semicolon": `"a;b"`, "quote": `"a'b"`, "dquote": `"a\"b"`, "edge space": `" a.gguf"`} {
 		yaml := modelsHead + "models:\n  m:\n    file: " + file + "\n    context: 1000\n    output: 100\n" + price
 		if _, err := ParseModels("models.yaml", []byte(yaml)); err == nil || !strings.Contains(err.Error(), "model m") || !strings.Contains(err.Error(), "file") {
 			t.Errorf("file %s: error = %v, want a refusal naming model m and file", name, err)

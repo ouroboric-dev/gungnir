@@ -163,9 +163,9 @@ func (d Download) check(name string) error {
 	return nil
 }
 
-// plainValue refuses a value the preset's INI parser could change or refuse: a line break, a comment
-// character, whitespace at either end and, unless quotes is true, a quote. The parser reads a quote as a
-// plain character, so an args value may hold one; a file path may not.
+// plainValue refuses a value the preset's INI parser could end or trim: a line break, '#' or ';', or
+// whitespace at either end. With quotes false it refuses a quote too: the parser keeps one as a plain
+// character, but a file name never needs one.
 func plainValue(v string, quotes bool) error {
 	if strings.ContainsAny(v, "\r\n#;") || strings.TrimSpace(v) != v {
 		return fmt.Errorf("must hold one line, with no '#' or ';' and no space at either end")
