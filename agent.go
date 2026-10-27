@@ -82,7 +82,7 @@ func (u Usage) Add(v Usage) Usage {
 type FailureKind string
 
 const (
-	// FailureAgent is the default: a non-zero exit, a timeout, a turn limit or output that can't be
+	// FailureAgent is the default: a non-zero exit, a timeout or output that can't be
 	// read. It counts as a loop attempt.
 	FailureAgent FailureKind = "agent"
 	// FailureTransient is an HTTP 429 or 5xx, a network error or a CLI that crashed at start. It is
@@ -95,6 +95,9 @@ const (
 	// FailureTokenLimit is a session stopped for passing its node's max_tokens. It counts as a loop attempt,
 	// and is never a hard stop.
 	FailureTokenLimit FailureKind = "token-limit"
+	// FailureTurnLimit is a session that reached its node's max_turns without handing back its output (no valid
+	// submit). Odin asks once more, with the session's notes. It counts against the run's caps.
+	FailureTurnLimit FailureKind = "turn-limit"
 )
 
 // MaxOutput is the most bytes of a session's final answer a Result holds. A longer answer is an
@@ -153,12 +156,12 @@ func (r Result) Validate() error {
 	}
 	switch r.Failure {
 	case "":
-	case FailureAgent, FailureTransient, FailureQuota, FailureTokenLimit:
+	case FailureAgent, FailureTransient, FailureQuota, FailureTokenLimit, FailureTurnLimit:
 		if r.Status != StatusFailed {
 			return fmt.Errorf("result status %q has a failure kind %q", r.Status, r.Failure)
 		}
 	default:
-		return fmt.Errorf("result failure kind %q is not agent, transient, quota or token-limit", r.Failure)
+		return fmt.Errorf("result failure kind %q is not agent, transient, quota, token-limit or turn-limit", r.Failure)
 	}
 	if len(r.Output) > MaxOutput {
 		return fmt.Errorf("result output is %d bytes, over the limit of %d", len(r.Output), MaxOutput)
